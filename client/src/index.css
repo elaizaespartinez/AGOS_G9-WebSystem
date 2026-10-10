@@ -22,7 +22,7 @@
     --font-agos-sub: 'Inter', sans-serif;
 
     --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
-    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.30);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.20);
 
     --container-agos: 1200px;
 }

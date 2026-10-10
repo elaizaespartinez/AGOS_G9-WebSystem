@@ -9,6 +9,7 @@ import Announcements from './pages/Announcements'
 import Emergency from './pages/Emergency'
 import Register from './pages/Register'
 import Login from './pages/Login'
+import CompleteProfile from './pages/CompleteProfile'
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
             <Route element={<AuthLayout />}>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/complete-profile" element={<CompleteProfile />} />
             </Route>
 
         </Routes>
