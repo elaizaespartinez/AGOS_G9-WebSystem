@@ -3,6 +3,7 @@ import {Eye, EyeOff, LoaderCircle} from "lucide-react";
 import { useState } from "react";
 import googleLogo from "../assets/google-logo.png";
 import {Link} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 function Login(){
 
@@ -93,7 +94,7 @@ function Login(){
                                     <label htmlFor="remember" className="ml-2 text-xs text-text/70 ">Remember me</label>
                                 </div>
 
-                                <p className="text-xs text-text/70 hover:underline cursor-pointer text-end">Forgot Password?</p>
+                                <Link to="/forgot-password" className="text-xs text-text/70 hover:underline cursor-pointer text-end">Forgot Password?</Link>
                             </div>
                             
                         </div>

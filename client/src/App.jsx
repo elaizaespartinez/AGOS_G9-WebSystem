@@ -10,6 +10,7 @@ import Emergency from './pages/Emergency'
 import Register from './pages/Register'
 import Login from './pages/Login'
 import CompleteProfile from './pages/CompleteProfile'
+import ForgotPassword from './pages/ForgotPassword'
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/complete-profile" element={<CompleteProfile />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
             </Route>
 
         </Routes>
