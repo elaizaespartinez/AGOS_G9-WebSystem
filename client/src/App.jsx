@@ -9,6 +9,9 @@ import Announcements from './pages/Announcements'
 import Emergency from './pages/Emergency'
 import Register from './pages/Register'
 import Login from './pages/Login'
+import CompleteProfile from './pages/CompleteProfile'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 
 function App() {
   return (
@@ -28,6 +31,9 @@ function App() {
             <Route element={<AuthLayout />}>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/complete-profile" element={<CompleteProfile />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
             </Route>
 
         </Routes>
