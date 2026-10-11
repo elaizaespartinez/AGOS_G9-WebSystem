@@ -145,7 +145,7 @@ function Register (){
                             <div className="relative">
                                 <input type={showConfirmPassword ? "text" : "password"} id="confirmPassword" name="confirmPassword" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required
                                 className="bg-background rounded-lg w-full p-2 text-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-secondary" placeholder="Confirm your password"/>
-                                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label={showConfirmPassword ? "Hide password" : "Show password"} className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"} className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none">
                                     {showConfirmPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                                 </button>
                             </div>
@@ -163,7 +163,7 @@ function Register (){
 
                         {error && <p role="alert" className="text-red-500 text-xs mb-2">{error}</p>}
 
-                        <button type="submit" disabled={isLoading} aria-busy={isLoading} className="bg-secondary text-white py-2 px-4 rounded-lg hover:bg-secondary-hover focus:outline-none focus:ring-1 focus:ring-secondary my-4 w-full shadow-elevated">
+                        <button type="submit" disabled={isLoading} aria-busy={isLoading} className="bg-secondary text-white py-2.5 px-4 rounded-lg hover:bg-secondary-hover focus:outline-none focus:ring-1 focus:ring-secondary my-4 w-full">
                             {isLoading ? 'Registering...' : 'Register'}
                             {isLoading && <LoaderCircle className="ml-2 animate-spin" size={16} />}
                         </button>

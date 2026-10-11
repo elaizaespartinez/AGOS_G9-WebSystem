@@ -87,7 +87,7 @@ function CompleteProfile (){
                        
                         
                         <button type="submit" 
-                        disabled={isLoading} className="bg-secondary text-white py-2 px-4 rounded-lg hover:bg-secondary-hover focus:outline-none focus:ring-1 focus:ring-secondary mt-4 w-full shadow-elevated disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                        disabled={isLoading} className="bg-secondary text-white py-2 px-4 rounded-lg hover:bg-secondary-hover focus:outline-none focus:ring-1 focus:ring-secondary mt-4 w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
                             {isLoading ? 'Completing...' : 'Complete Profile'}
                             {isLoading && <LoaderCircle className="ml-2 animate-spin" size={16} />}
                         </button>

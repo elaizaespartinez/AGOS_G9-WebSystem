@@ -25,12 +25,12 @@ function ForgotPassword() {
     return (
         <main className="min-h-dvh flex items-center justify-center bg-primary p-4">
             <div className="flex flex-col md:flex-row bg-white rounded-lg shadow-lg overflow-hidden md:w-full max-w-4xl drop-shadow-2xl">
-                <section className="flex flex-col items-center justify-center bg-white text-white p-0 md:p-8 md:w-1/2">
-                    <img src={forgotPasswordImage} alt="Forgot Password" className="hidden md:block w-full max-w-sm max-h-120 mx-auto object-contain"/>
+                <section className="flex flex-col items-center justify-center bg-white text-white p-4 md:p-8 md:w-1/2">
+                    <img src={forgotPasswordImage} alt="Forgot Password" className="w-full max-w-30 md:max-w-sm max-h-120 mx-auto object-contain"/>
                 </section>
 
-                <section className="flex flex-col justify-center bg-white text-gray-800 pb-8 pt-6 px-8 md:px-10 md:w-1/2">
-                    <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 p-3">
+                <section className="flex flex-col justify-center bg-white text-gray-800 pb-8 pt-0 px-8 md:px-10 md:w-1/2">
+                    <div className="hidden md:flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 p-3">
                         <LockKeyhole className="w-12 h-12 text-primary" />
                     </div>
                     

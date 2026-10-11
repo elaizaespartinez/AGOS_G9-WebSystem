@@ -2,6 +2,7 @@ import logo from "../assets/agos_logo.png";
 import {Eye, EyeOff, LoaderCircle} from "lucide-react";
 import { useState } from "react";
 import googleLogo from "../assets/google-logo.png";
+import login from "../assets/visuals/login.png";
 import {Link} from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
@@ -57,15 +58,15 @@ function Login(){
     };
 
     return (
-        <main className="min-h-dvh flex items-center justify-center bg-primary p-4">
+        <main className="min-h-dvh flex items-center justify-center bg-primary p-3 sm:p-4">
 
-            <div className="grid grid-cols-1 md:grid-cols-2 md:gap-4 bg-white rounded-lg shadow-lg overflow-hidden w-full md:w-full max-w-4xl drop-shadow-2xl">
+            <div className="flex flex-col md:flex-row bg-white rounded-lg shadow-lg overflow-hidden w-full max-w-md md:max-w-4xl drop-shadow-2xl">
                 
-                <section className="flex flex-col items-center justify-center bg-primary/10 text-white p-0 md:p-10">
-                    <img src={logo} alt="AGOS Logo" className="w-20 md:w-50 md:h-50" />
+                <section className="flex flex-col items-center justify-center bg-white text-white p-4 md:p-8 md:w-1/2">
+                    <img src={login} alt="Login" className="w-full max-w-30 md:max-w-xs max-h-120 mx-auto object-contain"/>
                 </section>
 
-                <section className="flex flex-col justify-center bg-white text-gray-800 pb-8 pt-6 px-8 md:px-10">
+                <section className="flex flex-col justify-center bg-white text-gray-800 pb-8 pt-0 px-8 md:px-10 md:py-8 md:w-1/2">
                     <h1 className="text-3xl font-extrabold mb-4 text-text text-center">Login</h1>
 
                     <form noValidate onSubmit={handleLogin} className="space-y-4">
@@ -117,8 +118,7 @@ function Login(){
 
                         <button
                             type="button" onClick={handleGoogleLogin} disabled={isGoogleLoading || isLoading}
-                            className="flex items-center justify-center w-full px-4 py-2.5 text-sm font-medium text-gray-700
-                                    bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2focus:ring-offset-2 focus:ring-gray-200 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                            className="flex items-center justify-center w-full px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2focus:ring-offset-2 focus:ring-gray-200 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                             <img src={googleLogo} alt="Google" className="w-5 h-5 mr-2" />
                             <span>{isGoogleLoading ? 'Signing in...' : 'Sign in with Google'}</span>
                             {isGoogleLoading && <LoaderCircle className="animate-spin ml-2 inline-block" size={16} />}
