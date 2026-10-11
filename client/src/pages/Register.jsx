@@ -7,7 +7,8 @@ function Register (){
 
         const [name, setName] = useState('');
         const [email, setEmail] = useState('');
-        const [city, setCity] = useState('');
+        const [provinceID, setProvinceID] = useState('');
+        const [cityID, setCityID] = useState('');
         const [barangayId, setBarangayId] = useState('');
         const [password, setPassword] = useState('');
         const passwordRequirements = {
@@ -36,7 +37,7 @@ function Register (){
                 setError('Please enter your email.');
                 return;
             }
-            if (!city) {
+            if (!cityID) {
                 setError('Please select your city.');
                 return;
             }
@@ -90,10 +91,17 @@ function Register (){
                         <div className="mb-2">
                             <label htmlFor="address" className="block text-text/70 font-medium text-sm">Address</label>
                             <div className="flex flex-col md:flex-row gap-2">
+                                <label htmlFor="province" className="sr-only">Province</label>
+                                <select id="province" name="province" value={provinceID} onChange={(e) => setProvinceID(e.target.value)} required className="bg-background rounded-lg w-full p-2 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-secondary">
+                                    <option value="">Province</option>
+                                    <option value="1">Batangas</option>
+                                    <option value="2">Province 2</option>
+                                    <option value="3">Province 3</option>
+                                </select>
 
                                 <label htmlFor="city" className="sr-only">City</label>
-                                <select id="city" name="city" value={city} onChange={(e) => setCity(e.target.value)} required className="bg-background rounded-lg w-full p-2 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-secondary">
-                                    <option value="">Select your City</option>
+                                <select id="city" name="city" value={cityID} onChange={(e) => setCityID (e.target.value)} required className="bg-background rounded-lg w-full p-2 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-secondary">
+                                    <option value="">City</option>
                                     <option value="City 1">Batangas City</option>
                                     <option value="City 2">City 2</option>
                                     <option value="City 3">City 3</option>
@@ -102,7 +110,7 @@ function Register (){
 
                                 <label htmlFor="barangay" className="sr-only">Barangay</label>
                                 <select id="barangay" name="barangay" value={barangayId} onChange={(e) => setBarangayId(e.target.value)} required className="bg-background rounded-lg w-full p-2 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-secondary">
-                                    <option value="">Select your Barangay</option>
+                                    <option value="">Barangay</option>
                                     <option value="Address 1">Address 1</option>
                                     <option value="Address 2">Address 2</option>
                                     <option value="Address 3">Address 3</option>

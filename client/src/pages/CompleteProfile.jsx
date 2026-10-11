@@ -10,7 +10,8 @@ function CompleteProfile (){
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [city, setCity] = useState('');
+    const [provinceID, setProvinceID] = useState('');
+    const [cityId, setCityId] = useState('');
     const [barangayId, setBarangayId] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -19,7 +20,7 @@ function CompleteProfile (){
         e.preventDefault();
         setError('');
 
-        if (!name.trim() || !email || !city || !barangayId) {
+        if (!name.trim() || !email || !cityId || !barangayId) {
             setError('Please fill in all fields.');
             return;
         }
@@ -62,10 +63,20 @@ function CompleteProfile (){
                             <label htmlFor="email" className="block text-text/70 font-medium text-sm">Email</label>
                             <input type="email" readOnly id="email" name="email"  required value={email}  className="bg-background rounded-lg w-full p-2 text-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-secondary read-only:cursor-not-allowed read-only:bg-gray-100 read-only:border-gray-300" placeholder="e.g., juan@example.com"/>
                         </div>
+                        
+                        <div className="mb-2">
+                            <label htmlFor="province" className="block text-text/70 font-medium text-sm">Province</label>
+                            <select id="province" name="province" required value={provinceID} onChange={(e) => setProvinceID(e.target.value)} className="bg-background rounded-lg w-full p-2 text-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-secondary">
+                                <option value="">Select your Province</option>
+                                <option value="1">Batangas</option>
+                                <option value="2">Province 2</option>
+                                <option value="3">Province 3</option>
+                            </select>
+                        </div>
 
                         <div className="mb-2">
                             <label htmlFor="city" className="block text-text/70 font-medium text-sm">City</label>
-                            <select id="city" name="city" required value={city} onChange={(e) => setCity(e.target.value)} className="bg-background rounded-lg w-full p-2 text-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-secondary">
+                            <select id="city" name="city" required value={cityId} onChange={(e) => setCityId(e.target.value)} className="bg-background rounded-lg w-full p-2 text-sm border border-gray-300 focus:outline-none focus:ring-1 focus:ring-secondary">
                                 <option value="">Select your City</option>
                                 <option value="1">Batangas City</option>
                                 <option value="2">City 2</option>
@@ -82,6 +93,8 @@ function CompleteProfile (){
                                 <option value="3">Barangay 3</option>
                             </select>
                         </div>
+
+                        
 
                         {error && <p role ="alert" className="text-red-500 text-xs mt-2">{error}</p>}
                        
