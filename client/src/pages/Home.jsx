@@ -187,6 +187,8 @@ function Home() {
                 </div>
             </section>
 
+            <Link to="/complete-profile">reset your password</Link>
+
         </main>
     )
 }
