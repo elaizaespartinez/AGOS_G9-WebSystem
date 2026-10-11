@@ -18,7 +18,6 @@ Tuwing may bagyo o malakas na ulan, ang pinakamahalaga ay **maagang abiso** at *
 - 🏘️ **Residents**: receive alerts, find evacuation centers, get alternative routes
 - 🛟 **Rescue teams and volunteers**: know where help is needed
 - 🧑‍💼 **Administrators**: manage flood data, barangays, alerts, and rescue assignments
-- 🤝 **Donors and volunteers**: help communities in need
 
 **Features:**
  
@@ -29,7 +28,6 @@ Tuwing may bagyo o malakas na ulan, ang pinakamahalaga ay **maagang abiso** at *
 - 🏫 **Evacuation Center Directory**: find the nearest evacuation centers per barangay
 - 🤖 **Chatbot**: quick answers and guidance during emergencies
 - 📞 **Emergency Hotline**: important numbers one tap away
-- 💛 **Help and Donation**: donate money or sign up as a volunteer
 - 🔐 **User Accounts**: registration, login, and personal profiles
 - 🇵🇭 **Nationwide Coverage**: not limited to a single barangay or city
 ## 👥 User Roles
