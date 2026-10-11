@@ -19,7 +19,7 @@ Tuwing may bagyo o malakas na ulan, ang pinakamahalaga ay **maagang abiso** at *
 - 🛟 **Rescue teams and volunteers**: know where help is needed
 - 🧑‍💼 **Administrators**: manage flood data, barangays, alerts, and rescue assignments
 - 🤝 **Donors and volunteers**: help communities in need
-</br>
+
 **Features:**
  
 - 🚨 **Alert System**: registered users get SMS or email alerts for their barangay
