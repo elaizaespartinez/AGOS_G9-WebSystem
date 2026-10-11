@@ -92,8 +92,11 @@ AGOS/
  
 Thank you for checking out **AGOS — Abiso at Gabay sa Oras ng Sakuna**.
  
+<div align="center">
+
+<b>Sa bawat AGOS, may gabay.</b> 🌊
 <br/>
-**Sa bawat AGOS, may gabay.** 🌊
- **&copy; 2026 AGOS — Abiso at Gabay sa Oras ng Sakuna. All rights reserved.**
+&copy; 2026 <b>AGOS — Abiso at Gabay sa Oras ng Sakuna</b>. All rights reserved.
+
 </div>
  
