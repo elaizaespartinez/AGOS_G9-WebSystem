@@ -2,6 +2,7 @@ import ServiceCard from '../components/ServiceCard'
 import {Map, BusFront, PhoneIncoming, ContactRound, Mail, Phone} from "lucide-react";
 import {Link} from "react-router-dom";
 import register from './Register';
+import ContactUs from './ContactUs';
 
 function Home() {
     return (
@@ -144,48 +145,9 @@ function Home() {
 
             {/*contact form*/}
             <section id="contact">
-                <header>
-                    <h2>Contact Us</h2>
-                </header>
-
-                <div>
-                    <form>
-                        <div>
-                            <label htmlFor="name">Full Name</label>
-                            <input type="text" id="name" name="name" required className="border"/>
-                        </div>
-                        <div>
-                            <label htmlFor="email">Email Address</label>
-                            <input type="email" id="email" name="email" required className="border"/>
-                        </div>
-                        <div>
-                            <label htmlFor="number">Contact Number</label>
-                            <input type="tel" id="number" name="number" required className="border"/>
-                        </div>
-                        <div>
-                            <label htmlFor="location">Location</label>
-                            <input type="text" id="location" name="location"  className="border"/>
-                        </div>
-                        <div>
-                            <label htmlFor="message">Message</label>
-                            <textarea id="message" name="message" required className="border"></textarea>
-                        </div>
-
-                         <button type="submit" className="border">Send Message</button>
-                    </form>     
-                </div>
-
-                <div>
-                    <div>
-                        <Mail size={32} />
-                        <a href="mailto:support@agos.ph">support@agos.ph</a>
-                    </div>
-                    <div>
-                        <Phone size={32} />
-                        <a href="tel:+639123456789">+63 912 345 6789</a>
-                    </div>
-                </div>
+                <ContactUs />
             </section>
+
 
 
         </main>
