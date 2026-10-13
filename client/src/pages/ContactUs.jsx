@@ -157,7 +157,7 @@ function ContactUs() {
             )}
 
             <header className="mb-10">
-                <h1 className="text-2xl md:text-3xl font-extrabold uppercase text-black text-center">
+                <h1 className="text-2xl md:text-3xl font-extrabold text-text text-center">
                     Contact Us
                 </h1>
             </header>
