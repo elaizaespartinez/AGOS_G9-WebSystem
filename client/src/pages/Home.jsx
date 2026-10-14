@@ -274,10 +274,7 @@ function Home() {
                 </div>
             </section>
 
-            <section
-                id="contact"
-                className="bg-white"
-            >
+            <section id="contact" className="bg-background -mx-2 md:-mx-32">
                 <ContactUs />
             </section>
         </main>
