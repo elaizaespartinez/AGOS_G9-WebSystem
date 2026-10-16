@@ -1,39 +1,84 @@
+import { useEffect, useState } from "react";
 import ServiceCard from "../components/ServiceCard";
 import { Map, BusFront, PhoneIncoming, ContactRound, Cloud, MapPin, WavesHorizontal, OctagonAlert, PhoneCall, } from "lucide-react";
 import ContactUs from "./ContactUs";
-import FloodYellow from "../assets/flood-warning-icons/flood-yellow.png";
-import RainRed from "../assets/rainfall-icons/red-rainfall.png";
 import MapImg from "../assets/visuals/map.png";
+import {
+    defaultHomeData,
+    getAlertIcon,
+    getFloodStatusIcon,
+} from "../data/homeData";
+import { getHomeDashboard } from "../services/homeService";
 
 function Home() {
-    const hotlines = [
-        {
-            name: "Mayor’s Action Center",
-            numbers: ["723-1511"],
-        },
-        {
-            name: "24/7 EBD Emergency Health Hotline",
-            numbers: ["0999-222-6626"],
-        },
-        {
-            name: "City DRRM",
-            numbers: ["702-3902"],
-        },
-        {
-            name: "BFP Batangas City",
-            numbers: ["425-7163", "0915-602-1984"],
-        },
-        {
-            name: "Batangas Component Police Station",
-            numbers: ["723-2030", "0916-429-1515", "0999-694-6805"],
-        },
-    ];
+    const [homeData, setHomeData] = useState(defaultHomeData);
+    const [isLoading, setIsLoading] = useState(true);
+    const [hasLoadError, setHasLoadError] = useState(false);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        getHomeDashboard()
+            .then((data) => {
+                if (!isMounted) return;
+
+                const dashboard =
+                    data && typeof data === "object" ? data : {};
+
+                setHomeData({
+                    ...defaultHomeData,
+                    ...dashboard,
+                    weather: {
+                        ...defaultHomeData.weather,
+                        ...dashboard.weather,
+                    },
+                    floodStatus: {
+                        ...defaultHomeData.floodStatus,
+                        ...dashboard.floodStatus,
+                    },
+                    activeAlert: {
+                        ...defaultHomeData.activeAlert,
+                        ...dashboard.activeAlert,
+                    },
+                    hotlines: Array.isArray(dashboard.hotlines)
+                        ? dashboard.hotlines
+                        : defaultHomeData.hotlines,
+                });
+            })
+            .catch((error) => {
+                if (!isMounted) return;
+
+                console.error("Unable to load the Home dashboard data.", error);
+                setHasLoadError(true);
+            })
+            .finally(() => {
+                if (isMounted) setIsLoading(false);
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    const { weather, floodStatus, activeAlert, hotlines } = homeData;
+    const floodStatusIcon = getFloodStatusIcon(floodStatus.risk);
+    const alertIcon = getAlertIcon(activeAlert.type, activeAlert.severity);
 
     const toTel = (number) =>
         `tel:${number.replace(/[^\d+]/g, "")}`;
 
     return (
         <main className="flex flex-col gap-2 bg-white p-2 md:px-32">
+            {(isLoading || hasLoadError) && (
+                <p
+                    role={hasLoadError ? "alert" : "status"}
+                    className="px-2 py-1 text-xs text-text/60"
+                >
+                    {isLoading
+                        ? "Loading live information..."
+                        : "⚠ Unable to update live information. Showing available data."}
+                </p>
+            )}
 
             <section className="flex items-center justify-between rounded-xl bg-primary p-4 text-white">
                 <div className="flex w-0 flex-1 items-center gap-2">
@@ -41,11 +86,11 @@ function Home() {
 
                     <div>
                         <h1 className="text-2xl font-bold md:text-4xl">
-                            28&deg;C
+                            {weather.temperature}
                         </h1>
 
                         <p className="text-sm">
-                            Cloudy
+                            {weather.condition}
                         </p>
                     </div>
                 </div>
@@ -55,16 +100,16 @@ function Home() {
                         <MapPin size={16} />
 
                         <p className="text-xs font-semibold md:text-sm">
-                            Brgy. Alangilan
+                            {weather.location}
                         </p>
                     </div>
 
                     <p className="text-xs font-bold md:text-sm">
-                        MON, September 28
+                        {weather.date}
                     </p>
 
                     <p className="text-xs md:text-sm">
-                        4:48:30 PM
+                        {weather.time}
                     </p>
                 </div>
             </section>
@@ -91,19 +136,23 @@ function Home() {
                             </header>
 
                             <div className="flex items-center gap-4">
-                                <img
-                                    src={FloodYellow}
-                                    alt="Flood Status"
-                                    className="h-12 w-12"
-                                />
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white p-0">
+                                    {floodStatusIcon && (
+                                        <img
+                                            src={floodStatusIcon}
+                                            alt={`${floodStatus.risk} flood status`}
+                                            className="h-full m-0"
+                                        />
+                                    )}
+                                </div>
 
                                 <div>
                                     <p className="text-sm">
-                                        Alangilan, Batangas City
+                                        {floodStatus.location}
                                     </p>
 
                                     <p className="text-lg font-bold">
-                                        Moderate Risk
+                                        {floodStatus.level}
                                     </p>
                                 </div>
                             </div>
@@ -124,19 +173,23 @@ function Home() {
                             </header>
 
                             <div className="flex items-center gap-4">
-                                <img
-                                    src={RainRed}
-                                    alt="Heavy Rainfall"
-                                    className="h-12 w-12"
-                                />
+                                <div className="h-12 w-12 overflow-hidden rounded-full">
+                                    {alertIcon && (
+                                        <img
+                                            src={alertIcon}
+                                            alt={`${activeAlert.severity} ${activeAlert.type} alert`}
+                                            className="h-full w-full object-cover"
+                                        />
+                                    )}
+                                </div>
 
                                 <div>
                                     <p className="text-lg font-bold">
-                                        Heavy Rainfall
+                                        {activeAlert.title}
                                     </p>
 
                                     <p className="text-sm">
-                                        Flooding Reported in Cuta
+                                        {activeAlert.description}
                                     </p>
                                 </div>
                             </div>
@@ -156,9 +209,9 @@ function Home() {
                         </header>
 
                         <dl className="divide-y divide-slate-100">
-                            {hotlines.map(({ name, numbers }) => (
+                            {hotlines.map(({ id, name, numbers }) => (
                                 <div
-                                    key={name}
+                                    key={id || name}
                                     className="flex flex-col gap-2 py-1 sm:flex-row sm:items-center sm:justify-between"
                                 >
                                     <dt className="text-sm font-semibold text-slate-800 sm:max-w-[55%]">
