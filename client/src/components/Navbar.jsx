@@ -17,7 +17,7 @@ export default function Navbar() {
     return (
         <nav
             className="
-                sticky top-0 z-1000 flex h-[72px] min-h-[72px] shrink-0 items-center
+                sticky top-0 z-1000 flex h-18 md:h-20 min-h-[72px]  items-center
                 border-b border-gray-200 bg-white px-[5%]
                 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.1)]
                 max-md:flex-wrap max-md:py-3"
@@ -29,14 +29,13 @@ export default function Navbar() {
                 className="
                     flex items-center gap-2.5
                     text-[1.1rem] font-bold text-gray-900 no-underline
-                    max-md:absolute max-md:left-1/2 max-md:top-1/2
-                    max-md:-translate-x-1/2 max-md:-translate-y-1/2"
+                "
                 aria-label="Go to homepage"
             >
                 <img
                     src={logo}
                     alt="Logo"
-                    className="h-12 w-auto object-contain max-md:h-10"/>
+                    className="h-14 w-auto object-contain max-md:h-12"/>
             </NavLink>
 
             {open && (
@@ -50,11 +49,11 @@ export default function Navbar() {
                 className={`
                     flex flex-col items-start gap-4
 
-                    max-md:fixed max-md:top-0 max-md:left-0 max-md:z-1001
+                    max-md:fixed max-md:top-0 max-md:right-0 max-md:left-auto max-md:z-1001
                     max-md:h-screen max-md:w-64 max-md:bg-white
                     max-md:px-5 max-md:py-4 max-md:shadow-xl
                     max-md:transition-transform max-md:duration-300
-                    ${open ? "max-md:translate-x-0" : "max-md:-translate-x-full max-md:invisible"}
+                    ${open ? "max-md:translate-x-0" : "max-md:translate-x-full max-md:invisible"}
 
                     md:ml-auto md:flex md:w-auto md:flex-row md:items-center
                     md:gap-[clamp(16px,2.5vw,34px)] md:p-0
@@ -109,8 +108,8 @@ export default function Navbar() {
                 to="/login"
                 onClick={() => setOpen(false)}
                 className={`
-                    ml-auto md:ml-8
-                    inline-flex h-10 w-10 items-center justify-center
+                    ml-auto md:ml-8 hidden 
+                    md:inline-flex h-10 w-10 items-center justify-center
                     rounded-full bg-primary/10 text-text
                     hover:bg-primary/30 drop-shadow-sm
                     ${open ? "max-md:hidden" : ""}
@@ -122,8 +121,8 @@ export default function Navbar() {
 
             <button
                 className="
-                    order-first inline-flex cursor-pointer border-0
-                    bg-primary hover:bg-primary-hover
+                    ml-auto inline-flex cursor-pointer border-0
+                 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 
                     rounded-md p-2 text-text
                     md:hidden"
                 type="button"
@@ -133,7 +132,7 @@ export default function Navbar() {
                 {open ? (
                     <X className="h-5 w-5 text-white" />
                 ) : (
-                    <Menu className="h-5 w-5 text-white" />
+                    <Menu className="h-6 w-6 text-text" />
                 )}
             </button>
         </nav>

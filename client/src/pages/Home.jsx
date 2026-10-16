@@ -1,103 +1,251 @@
-import ServiceCard from '../components/ServiceCard'
-import {Map, BusFront, PhoneIncoming, ContactRound, Mail, Phone} from "lucide-react";
-import {Link} from "react-router-dom";
-import register from './Register';
-import ContactUs from './ContactUs';
+import { useEffect, useState } from "react";
+import ServiceCard from "../components/ServiceCard";
+import { Map, BusFront, PhoneIncoming, ContactRound, Cloud, MapPin, WavesHorizontal, OctagonAlert, PhoneCall, } from "lucide-react";
+import ContactUs from "./ContactUs";
+import MapImg from "../assets/visuals/map.png";
+import {
+    defaultHomeData,
+    getAlertIcon,
+    getFloodStatusIcon,
+} from "../data/homeData";
+import { getHomeDashboard } from "../services/homeService";
 
 function Home() {
-    return (
-        <main>
+    const [homeData, setHomeData] = useState(defaultHomeData);
+    const [isLoading, setIsLoading] = useState(true);
+    const [hasLoadError, setHasLoadError] = useState(false);
 
-            {/* current conditions */}
-            <section>
-                <div>
-                    <h1>28&deg;C</h1>
-                    <p>Cloudy</p>
+    useEffect(() => {
+        let isMounted = true;
+
+        getHomeDashboard()
+            .then((data) => {
+                if (!isMounted) return;
+
+                const dashboard =
+                    data && typeof data === "object" ? data : {};
+
+                setHomeData({
+                    ...defaultHomeData,
+                    ...dashboard,
+                    weather: {
+                        ...defaultHomeData.weather,
+                        ...dashboard.weather,
+                    },
+                    floodStatus: {
+                        ...defaultHomeData.floodStatus,
+                        ...dashboard.floodStatus,
+                    },
+                    activeAlert: {
+                        ...defaultHomeData.activeAlert,
+                        ...dashboard.activeAlert,
+                    },
+                    hotlines: Array.isArray(dashboard.hotlines)
+                        ? dashboard.hotlines
+                        : defaultHomeData.hotlines,
+                });
+            })
+            .catch((error) => {
+                if (!isMounted) return;
+
+                console.error("Unable to load the Home dashboard data.", error);
+                setHasLoadError(true);
+            })
+            .finally(() => {
+                if (isMounted) setIsLoading(false);
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    const { weather, floodStatus, activeAlert, hotlines } = homeData;
+    const floodStatusIcon = getFloodStatusIcon(floodStatus.risk);
+    const alertIcon = getAlertIcon(activeAlert.type, activeAlert.severity);
+
+    const toTel = (number) =>
+        `tel:${number.replace(/[^\d+]/g, "")}`;
+
+    return (
+        <main className="flex flex-col gap-2 bg-white p-2 md:px-32">
+            {(isLoading || hasLoadError) && (
+                <p
+                    role={hasLoadError ? "alert" : "status"}
+                    className="px-2 py-1 text-xs text-text/60"
+                >
+                    {isLoading
+                        ? "Loading live information..."
+                        : "⚠ Unable to update live information. Showing available data."}
+                </p>
+            )}
+
+            <section className="flex items-center justify-between rounded-xl bg-primary p-4 text-white">
+                <div className="flex w-0 flex-1 items-center gap-2">
+                    <Cloud size={40} className="text-white/70" />
+
+                    <div>
+                        <h1 className="text-2xl font-bold md:text-4xl">
+                            {weather.temperature}
+                        </h1>
+
+                        <p className="text-sm">
+                            {weather.condition}
+                        </p>
+                    </div>
                 </div>
 
-                <div>
-                    <p>Brgy. Alangilan</p>
-                    <p>MON, September 28</p>
-                    <p>4:48:30 PM</p>
+                <div className="flex flex-1 flex-col items-start rounded-xl bg-[#1BBED2]/40 p-4">
+                    <div className="flex items-center gap-1">
+                        <MapPin size={16} />
+
+                        <p className="text-xs font-semibold md:text-sm">
+                            {weather.location}
+                        </p>
+                    </div>
+
+                    <p className="text-xs font-bold md:text-sm">
+                        {weather.date}
+                    </p>
+
+                    <p className="text-xs md:text-sm">
+                        {weather.time}
+                    </p>
                 </div>
             </section>
 
-            {/* agos dashboard */}
-            <section>
-                
-                <header>
-                    <h1>AGOS Dashboard</h1>
+            <hr className="border-t border-text/20" />
+
+            <section className="flex flex-col gap-2 rounded-xl p-2">
+                <header className="w-fit">
+                    <h2 className="text-2xl font-extrabold text-text md:text-3xl">
+                        Dashboard
+                    </h2>
                 </header>
 
-                <div>
-                    <div>
-                        <article>
-                            <h3>Current Flood Status</h3>
-                            <p>Alangilan, Batangas City</p>
-                            <p>Moderate Risk</p>
+                <div className="grid grid-cols-1 gap-3 py-3 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-2 md:grid-rows-2">
+
+                        <article className="flex flex-col gap-2 rounded-xl bg-secondary p-4 text-white shadow-elevated md:p-6">
+                            <header className="flex items-center justify-between gap-2">
+                                <h3 className="text-sm font-semibold">
+                                    Current Flood Status
+                                </h3>
+
+                                <WavesHorizontal size={32} />
+                            </header>
+
+                            <div className="flex items-center gap-4">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white p-0">
+                                    {floodStatusIcon && (
+                                        <img
+                                            src={floodStatusIcon}
+                                            alt={`${floodStatus.risk} flood status`}
+                                            className="h-full m-0"
+                                        />
+                                    )}
+                                </div>
+
+                                <div>
+                                    <p className="text-sm">
+                                        {floodStatus.location}
+                                    </p>
+
+                                    <p className="text-lg font-bold">
+                                        {floodStatus.level}
+                                    </p>
+                                </div>
+                            </div>
                         </article>
-                        <article>
-                            <h3>Active Alerts</h3>
-                            <p>Heavy Rainfall</p>
-                            <p>Flooding Reported in Cuta</p>
+
+                        <article className="flex flex-col gap-2 rounded-xl bg-white p-4 text-text shadow-elevated md:p-6">
+                            <header className="flex items-center justify-between gap-2">
+                                <h3 className="text-sm font-semibold">
+                                    Active Alerts
+                                </h3>
+
+                                <div className="rounded-full bg-red-700">
+                                    <OctagonAlert
+                                        size={32}
+                                        className="text-white"
+                                    />
+                                </div>
+                            </header>
+
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 overflow-hidden rounded-full">
+                                    {alertIcon && (
+                                        <img
+                                            src={alertIcon}
+                                            alt={`${activeAlert.severity} ${activeAlert.type} alert`}
+                                            className="h-full w-full object-cover"
+                                        />
+                                    )}
+                                </div>
+
+                                <div>
+                                    <p className="text-lg font-bold">
+                                        {activeAlert.title}
+                                    </p>
+
+                                    <p className="text-sm">
+                                        {activeAlert.description}
+                                    </p>
+                                </div>
+                            </div>
                         </article>
                     </div>
 
-                    <article>
-                        <header>
-                            <h3>Quick Emergency Hotline</h3>
-                           
+                    <article className="flex flex-col gap-2 rounded-xl bg-white p-4 text-text shadow-elevated md:p-6">
+                        <header className="flex items-center justify-between gap-2">
+                            <h3 className="text-sm font-bold text-primary md:text-lg">
+                                Quick Emergency Hotline
+                            </h3>
+
+                            <PhoneCall
+                                size={32}
+                                className="text-primary"
+                            />
                         </header>
 
-                        <ul>
-                            <li>
-                                <p>Mayor's Action Center</p>
-                                <div>
-                                    <a href="tel:7231511">723-1511</a>
-                                </div>
-                            </li>
+                        <dl className="divide-y divide-slate-100">
+                            {hotlines.map(({ id, name, numbers }) => (
+                                <div
+                                    key={id || name}
+                                    className="flex flex-col gap-2 py-1 sm:flex-row sm:items-center sm:justify-between"
+                                >
+                                    <dt className="text-sm font-semibold text-slate-800 sm:max-w-[55%]">
+                                        {name}
+                                    </dt>
 
-                            <li>
-                                <p>24/7 EBD Emergency Health Hotline</p>
-                                <div>
-                                    <a href="tel:09992226626">0999-222-6626</a>
+                                    <dd className="flex flex-col gap-1 sm:items-end">
+                                        {numbers.map((number) => (
+                                            <a
+                                                key={number}
+                                                href={toTel(number)}
+                                                className="rounded text-sm text-slate-700 underline-offset-4 transition-colors hover:text-teal-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                                            >
+                                                {number}
+                                            </a>
+                                        ))}
+                                    </dd>
                                 </div>
-                            </li>
-
-                            <li>
-                                <p>City DRRM</p>
-                                <div>
-                                    <a href="tel:7023902">702-3902</a>
-                                </div>
-                            </li>
-
-                            <li>
-                                <p>BFP Batangas City</p>
-                                <div>
-                                    <a href="tel:4257163">425-7163</a>
-                                    <a href="tel:09156021984">09156021984</a>
-                                </div>
-                            </li>
-
-                            <li>
-                                <p>Batangas Component Police Station</p>
-                                <div>
-                                    <a href="tel:7232030">723-2030</a>
-                                    <a href="tel:09164291515">0916-429-1515</a>
-                                    <a href="tel:09996946805">0999-694-6805</a>
-                                </div>
-                            </li>
-                        </ul>
+                            ))}
+                        </dl>
                     </article>
                 </div>
-
             </section>
 
-            {/*quick actions*/}
-            <section>
-                <h1>Quick Actions</h1>
+            <hr className="border-t border-text/20" />
 
-                <div>
+            <section className="flex flex-col gap-2 rounded-xl p-2">
+                <header className="w-fit">
+                    <h2 className="text-2xl font-extrabold text-text md:text-3xl">
+                        Quick Actions
+                    </h2>
+                </header>
+
+                <div className="grid grid-cols-1 gap-3 py-3 md:grid-cols-4">
                     <ServiceCard
                         icon={<Map size={32} />}
                         title="Flood Map"
@@ -122,36 +270,68 @@ function Home() {
                     <ServiceCard
                         icon={<ContactRound size={32} />}
                         title="Contact Us"
-                        description="Reach the AGOS  team for inquiries, concerns, feedback, or assistance."
+                        description="Reach the AGOS team for inquiries, concerns, feedback, or assistance."
                         to="#contact"
                     />
                 </div>
             </section>
 
-            {/*about agos*/}
-            <section>
-                <h2>
-                    About
-                </h2>
+            <hr className="border-t border-text/20" />
 
-                <div>
-                    <div><img src="" alt="" /></div>
-                    <div>
-                        <p>Sa bawat AGOS, may gabay</p>
-                        <p>The name AGOS (“current” or “flow”) reflects both the flow of floodwater that the system monitors and the flow of timely information it delivers back to communities, turning a hazard into a guided, navigable situation.</p>
+            <section className="bg-background -mx-2 md:-mx-32">
+                <div className="flex flex-col gap-6 p-4 md:px-32">
+                    <header>
+                        <h2 className="text-2xl font-extrabold text-text md:text-3xl">
+                            About AGOS
+                        </h2>
+                    </header>
+
+                    <div className="grid grid-cols-1 items-center gap-6 md:grid-cols-2">
+                        <figure className="relative overflow-hidden rounded-2xl bg-gray-100 shadow-elevated">
+                            <img
+                                src={MapImg}
+                                alt="AGOS flood monitoring map"
+                                className="h-[280px] w-full object-cover transition-transform duration-700 hover:scale-105 md:h-[380px]"
+                            />
+
+                            <figcaption className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-5 pt-12">
+                                <p className="text-sm font-semibold text-white">
+                                    Flood Monitoring & Community Safety
+                                </p>
+                            </figcaption>
+                        </figure>
+
+                        <div className="flex flex-col gap-4 md:px-6">
+                            <p className="text-lg font-bold italic text-primary">
+                                Sa bawat AGOS, may gabay.
+                            </p>
+
+                            <h3 className="text-2xl font-extrabold text-text md:text-3xl">
+                                Helping communities navigate hazards with confidence.
+                            </h3>
+
+                            <p className="text-sm leading-relaxed text-text/70 md:text-base">
+                                AGOS is a disaster information and navigation platform
+                                designed to help communities in Batangas City stay informed,
+                                understand flood risks, and find safer routes during
+                                hazardous conditions.
+                            </p>
+
+                            <p className="text-sm leading-relaxed text-text/70 md:text-base">
+                                The name AGOS, meaning “current” or “flow,” represents both
+                                the movement of floodwater and the flow of timely information
+                                to the community.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            {/*contact form*/}
-            <section id="contact">
+            <section id="contact" className="bg-background -mx-2 md:-mx-32">
                 <ContactUs />
             </section>
-
-
-
         </main>
-    )
+    );
 }
-
+  
 export default Home;
