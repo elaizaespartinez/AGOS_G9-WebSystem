@@ -86,16 +86,16 @@ AGOS/
 
 ### References
 
-<div align="center">
-## 💖 Thank You for Reading!
- 
-Thank you for checking out **AGOS — Abiso at Gabay sa Oras ng Sakuna**.
- 
+
 <div align="center">
 
+## 💖 Thank You for Reading!
+
+Thank you for checking out **AGOS — Abiso at Gabay sa Oras ng Sakuna**.
+
 <b>Sa bawat AGOS, may gabay.</b> 🌊
-<br/>
-&copy; 2026 <b>AGOS — Abiso at Gabay sa Oras ng Sakuna</b>. All rights reserved.
+
+© 2026 **AGOS — Abiso at Gabay sa Oras ng Sakuna**. All rights reserved.
 
 </div>
  
