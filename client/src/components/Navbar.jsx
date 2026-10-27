@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { NavLink, Link } from "react-router-dom";
 import logo from "../assets/agos_logo.png";
-import { User, Menu, X } from "lucide-react";
+import { User, Menu, X, Phone } from "lucide-react";
 
 const links = [
     ["Home", "/"],
@@ -20,7 +20,7 @@ export default function Navbar() {
                 sticky top-0 z-1000 flex h-18 md:h-20 min-h-[72px]  items-center
                 border-b border-gray-200 bg-white px-[5%]
                 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.1)]
-                max-md:flex-wrap max-md:py-3"
+                max-md:flex-wrap max-md:py-3 mb-4"
                 aria-label="Main navigation"
         >
             <NavLink
@@ -38,6 +38,7 @@ export default function Navbar() {
                     className="h-14 w-auto object-contain max-md:h-12"/>
             </NavLink>
 
+            
             {open && (
                 <div
                     className="fixed inset-0 z-1000 bg-black/40 md:hidden"
@@ -102,6 +103,23 @@ export default function Navbar() {
                         </NavLink>
                     </li>
                 ))}
+
+                <li className="hidden md:block">
+                    <a
+                        href="tel:911"
+                        className="
+                            inline-flex items-center gap-1.5 rounded-2xl
+                            bg-red-800 px-3 py-2 text-sm font-bold text-white
+                            no-underline transition-colors hover:bg-red-700
+                            focus:outline-none focus-visible:ring-2
+                            focus-visible:ring-risk-high focus-visible:ring-offset-2
+                        "
+                        aria-label="Call 911"
+                    >
+                        <Phone className="h-4 w-4" aria-hidden="true" />
+                        SOS
+                    </a>
+                </li>
             </ul>
 
             <Link
@@ -119,9 +137,27 @@ export default function Navbar() {
                 <User className="h-5 w-5 text-primary" />
             </Link>
 
+            
+
+            <a
+                href="tel:911"
+                className="
+                    ml-auto inline-flex items-center justify-center rounded-2xl
+                    bg-red-800 p-3 text-xs font-bold text-white
+                    transition-colors hover:bg-red-700
+                    focus:outline-none focus-visible:ring-2
+                    focus-visible:ring-red-500 focus-visible:ring-offset-2
+                    md:hidden gap-1
+                "
+                aria-label="Call 911"
+            >
+                <Phone className="h-3 w-3" aria-hidden="true" /> 
+                SOS
+            </a>
+
             <button
                 className="
-                    ml-auto inline-flex cursor-pointer border-0
+                    ml-2 inline-flex cursor-pointer border-0
                  hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 
                     rounded-md p-2 text-text
                     md:hidden"
@@ -135,6 +171,8 @@ export default function Navbar() {
                     <Menu className="h-6 w-6 text-text" />
                 )}
             </button>
+
+            
         </nav>
     );
 }

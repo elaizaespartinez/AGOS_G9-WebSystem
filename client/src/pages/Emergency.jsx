@@ -89,11 +89,9 @@ function Emergency() {
 ;
     return (
         <main className="md:mx-32 bg-white">
-            <header className="pt-6 pb-2 px-4">
-                <h1 className="text-2xl font-extrabold text-text md:text-3xl">Emergency Hotline</h1>
-            </header>
+           
 
-            <section className="p-4 flex flex-col gap-6">
+            <section className="p-2 flex flex-col gap-6">
                 <article className="flex flex-col gap-6 bg-white px-6 py-8 rounded-lg shadow-elevated">
                     <h2 className="text-xl font-bold">Find your local response contact</h2>
                     <div className="flex flex-col gap-2 md:flex-row md:gap-8 justify-between">
@@ -124,8 +122,7 @@ function Emergency() {
                 </article>
 
                 <div className="relative w-full  mx-auto">
-                    
-
+            
                     <div
                         aria-hidden="true"
                         className="pointer-events-none absolute inset-0 rounded-2xl border-[5px] border-[#2b9db5] bg-[#e9f5f6]"
@@ -196,7 +193,6 @@ function Emergency() {
                         </a>
                     </div>
 
-                    {/* Agency cards */}
                     <ul className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                         {natHotlines.map(({ name, logo, numbers }) => (
                             <li
