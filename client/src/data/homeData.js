@@ -15,10 +15,10 @@ const floodStatusIcons = {
 };
 
 const rainfallIcons = {
-    low: GreenRainfall,
-    moderate: YellowRainfall,
-    high: OrangeRainfall,
-    severe: RainRed,
+    safe: GreenRainfall,
+    low: YellowRainfall,
+    moderate: OrangeRainfall,
+    high: RainRed,
 };
 
 export const getFloodStatusIcon = (risk) =>
@@ -47,10 +47,13 @@ export const defaultHomeData = {
         risk: "unknown",
     },
     activeAlert: {
-        title: "No alert data",
-        description: "Alert information unavailable",
-        type: "none",
-        severity: "unknown",
+        title: "Flood safety advisory",
+        description:
+            "Avoid low-lying areas. Check the flood map before travelling.",
+        type: "rainfall",
+        severity: "moderate",
+        updatedAt: "Today, 4:48 PM",
+        source: "AGOS System Monitoring",
     },
     hotlines: [],
 };
@@ -61,30 +64,30 @@ export const mockHomeData = {
         temperature: "29°C",
         condition: "Cloudy",
         location: "Brgy. Alangilan",
-        date: "MON, September 28",
-        time: "4:48:30 PM",
+        date: "Mon, September 28",
+        time: "4:48 PM",
     },
     floodStatus: {
         location: "Alangilan, Batangas City",
         level: "Moderate Risk",
         risk: "moderate",
+        updatedAt: "Today, 4:48 PM",
+        source: "AGOS System Monitoring",
     },
     activeAlert: {
-        title: "Heavy Rainfall",
-        description: "Flooding Reported in Cuta",
+        title: "Safe",
+        description:
+            "Safe conditions. No immediate flood risk. Continue to monitor weather updates.",
         type: "rainfall",
-        severity: "severe",
+        severity: "safe",
+        updatedAt: "Today, 4:48 PM",
+        source: "AGOS System Monitoring",
     },
     hotlines: [
         {
             id: "mayors-action-center",
             name: "Mayor’s Action Center",
             numbers: ["723-1511"],
-        },
-        {
-            id: "ebd-emergency-health",
-            name: "24/7 EBD Emergency Health Hotline",
-            numbers: ["0999-222-6626"],
         },
         {
             id: "city-drrm",
@@ -95,11 +98,6 @@ export const mockHomeData = {
             id: "bfp-batangas-city",
             name: "BFP Batangas City",
             numbers: ["425-7163", "0915-602-1984"],
-        },
-        {
-            id: "batangas-component-police",
-            name: "Batangas Component Police Station",
-            numbers: ["723-2030", "0916-429-1515", "0999-694-6805"],
         },
     ],
 };
