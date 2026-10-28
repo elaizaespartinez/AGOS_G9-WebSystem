@@ -432,3 +432,27 @@ function Home() {
 }
   
 export default Home;
+
+// import { useAuth } from "../contexts/AuthContext";
+
+// function Home() {
+//     const { user, loading } = useAuth();
+
+//     if (loading) {
+//         return <div>Loading...</div>;
+//     }
+
+//     return (
+//         <div>
+//             <h1>Home</h1>
+
+//             {user ? (
+//                 <p>Logged in as: {user.email}</p>
+//             ) : (
+//                 <p>Not logged in</p>
+//             )}
+//         </div>
+//     );
+// }
+
+// export default Home;
