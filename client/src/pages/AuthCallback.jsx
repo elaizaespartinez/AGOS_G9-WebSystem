@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
+import { getAuthErrorMessage } from "../services/authError";
 
 export default function AuthCallback() {
     const navigate = useNavigate();
@@ -27,9 +28,10 @@ export default function AuthCallback() {
                 }
 
                 const metadata = user.user_metadata ?? {};
+                const name = metadata.name || metadata.full_name || metadata.fullName;
 
                 const isProfileComplete = Boolean(
-                    metadata.name?.trim() &&
+                    name?.trim() &&
                     metadata.province_id &&
                     metadata.city_id &&
                     metadata.barangay_id
@@ -43,9 +45,7 @@ export default function AuthCallback() {
                 );
             } catch (err) {
                 console.error("Authentication callback error:", err);
-                setError(
-                    "Unable to finish sign-in. Please try again."
-                );
+                setError(getAuthErrorMessage(err, "Unable to finish sign-in. Please try again."));
             }
         };
 

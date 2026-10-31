@@ -67,7 +67,6 @@ export const signInWithGoogle = async () => {
 };
 
 
-
 export const getSession = async () => {
     const { data, error } =
         await supabase.auth.getSession();

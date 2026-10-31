@@ -10,13 +10,23 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const getInitialSession = async () => {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession();
+            try {
+                const {
+                    data: { session },
+                    error,
+                } = await supabase.auth.getSession();
 
-            setSession(session);
-            setUser(session?.user ?? null);
-            setLoading(false);
+                if (error) throw error;
+
+                setSession(session);
+                setUser(session?.user ?? null);
+            } catch (error) {
+                console.error("Unable to initialize authentication.", error);
+                setSession(null);
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
         };
 
         getInitialSession();

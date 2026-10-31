@@ -67,7 +67,7 @@ export default function Profile() {
     if (!user || !profile) {
         return (
             <main className="min-h-[calc(100vh-14rem)] bg-white px-4 py-6 md:px-8">
-                <div className="mx-auto max-w-4xl rounded-2xl border border-dashed border-primary/30 bg-white p-8 text-center shadow-elevated">
+                <div className="mx-auto max-w-4xl rounded-2xl border-primary/30 bg-white p-8 text-center shadow-elevated">
                     <h1 className="mb-2 text-xl font-bold text-text">
                         Sign in to view your profile
                     </h1>
