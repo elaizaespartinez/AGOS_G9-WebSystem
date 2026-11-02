@@ -1,7 +1,9 @@
-import { useState } from "react";
-import { NavLink, Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { NavLink, Link, useNavigate} from "react-router-dom";
 import logo from "../assets/agos_logo.png";
-import { User, Menu, X, Phone } from "lucide-react";
+import { User, Menu, X, Phone, LogOut } from "lucide-react";
+import {signOut} from "../services/authService";
+import { useAuth } from "../contexts/AuthContext";
 
 const links = [
     ["Home", "/"],
@@ -13,6 +15,58 @@ const links = [
 
 export default function Navbar() {
     const [open, setOpen] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [logoutError, setLogoutError] = useState("");
+
+    const menuRef = useRef(null);
+    const menuButtonRef = useRef(null);
+
+    const { user, loading } = useAuth();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!menuOpen) return;
+
+        const handlePointerDown = (e) => {
+            if (menuRef.current && !menuRef.current.contains(e.target)) {
+                setMenuOpen(false);
+            }
+        };
+
+        const handleKeyDown = (e) => {
+            if (e.key === "Escape") {
+                setMenuOpen(false);
+                menuButtonRef.current?.focus();
+            }
+        };
+
+        document.addEventListener("mousedown", handlePointerDown);
+        document.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            document.removeEventListener("mousedown", handlePointerDown);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [menuOpen]);
+
+    const handleLogout = async () => {
+        setLogoutError("");
+        setIsLoggingOut(true);
+
+        try {
+            await signOut();
+
+            setOpen(false);
+            setMenuOpen(false);
+            navigate("/profile", { replace: true });
+        } catch (error) {
+            console.error("Logout error:", error);
+            setLogoutError("Unable to log out. Please try again.");
+        } finally {
+            setIsLoggingOut(false);
+        }
+    };
 
     return (
         <nav
@@ -38,7 +92,6 @@ export default function Navbar() {
                     className="h-14 w-auto object-contain max-md:h-12"/>
             </NavLink>
 
-            
             {open && (
                 <div
                     className="fixed inset-0 z-1000 bg-black/40 md:hidden"
@@ -62,14 +115,14 @@ export default function Navbar() {
             >
                 <li className="flex w-full items-center justify-end gap-2 md:hidden">
                     <Link
-                        to="/login"
+                        to="/profile"
                         onClick={() => setOpen(false)}
                         className="
                             inline-flex h-10 w-10 items-center justify-center
                             rounded-full bg-primary/10 text-text
                             hover:bg-primary/30 drop-shadow-sm
                         "
-                        aria-label="Log in"
+                        aria-label="View profile"
                     >
                         <User className="h-5 w-5 text-primary" />
                     </Link>
@@ -104,6 +157,33 @@ export default function Navbar() {
                     </li>
                 ))}
 
+                {user && (
+                    <li className="w-full md:hidden">
+                        <hr className="mb-4 border-gray-200" />
+                        <button
+                            type="button"
+                            onClick={handleLogout}
+                            disabled={isLoggingOut}
+                            aria-label="Logout"
+                            className="
+                                inline-flex min-h-11 w-full items-center justify-center gap-2
+                                rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700
+                                hover:bg-red-100 disabled:opacity-50
+                                focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500
+                            "
+                        >
+                            <LogOut className="h-4 w-4" aria-hidden="true" />
+                            {isLoggingOut ? "Logging out..." : "Logout"}
+                        </button>
+
+                        {logoutError && (
+                            <p aria-hidden="true" className="mt-2 text-xs text-red-700">
+                                {logoutError}
+                            </p>
+                        )}
+                    </li>
+                )}
+
                 <li className="hidden md:block">
                     <a
                         href="tel:911"
@@ -122,22 +202,88 @@ export default function Navbar() {
                 </li>
             </ul>
 
-            <Link
-                to="/login"
-                onClick={() => setOpen(false)}
-                className={`
-                    ml-auto md:ml-8 hidden 
-                    md:inline-flex h-10 w-10 items-center justify-center
-                    rounded-full bg-primary/10 text-text
-                    hover:bg-primary/30 drop-shadow-sm
-                    ${open ? "max-md:hidden" : ""}
-                `}
-                aria-label="Log in"
-            >
-                <User className="h-5 w-5 text-primary" />
-            </Link>
 
-            
+            <div ref={menuRef} className="relative ml-auto hidden md:ml-8 md:block">
+                {user ? (
+                    <>
+                        <button
+                            ref={menuButtonRef}
+                            type="button"
+                            onClick={() => setMenuOpen((isOpen) => !isOpen)}
+                            aria-label="Account menu"
+                            aria-haspopup="true"
+                            aria-expanded={menuOpen}
+                            aria-controls="account-menu"
+                            className="
+                                inline-flex h-10 w-10 cursor-pointer items-center justify-center
+                                rounded-full border-0 bg-primary/10 text-text
+                                hover:bg-primary/30 drop-shadow-sm
+                                focus:outline-none focus-visible:ring-2 focus-visible:ring-primary
+                            "
+                        >
+                            <User className="h-5 w-5 text-primary" />
+                        </button>
+
+                        {menuOpen && (
+                            <div
+                                id="account-menu"
+                                className="
+                                    absolute right-0 top-full z-1001 mt-2 w-48
+                                    rounded-xl border border-gray-200 bg-white p-1.5
+                                    shadow-elevated
+                                "
+                            >
+                                <Link
+                                    to="/profile"
+                                    onClick={() => setMenuOpen(false)}
+                                    className="
+                                        flex min-h-11 items-center gap-2 rounded-lg px-3
+                                        text-sm font-semibold text-text no-underline
+                                        hover:bg-primary/10
+                                        focus:outline-none focus-visible:ring-2 focus-visible:ring-primary
+                                    "
+                                >
+                                    <User className="h-4 w-4 text-primary" aria-hidden="true" />
+                                    Profile
+                                </Link>
+
+                                <button
+                                    type="button"
+                                    onClick={handleLogout}
+                                    disabled={isLoggingOut}
+                                    className="
+                                        flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg
+                                        border-0 bg-transparent px-3 text-left text-sm font-semibold
+                                        text-red-700 hover:bg-red-50 disabled:opacity-50
+                                        focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500
+                                    "
+                                >
+                                    <LogOut className="h-4 w-4" aria-hidden="true" />
+                                    {isLoggingOut ? "Logging out..." : "Logout"}
+                                </button>
+
+                                {logoutError && (
+                                    <p aria-hidden="true" className="px-3 pb-2 pt-1 text-xs text-red-700">
+                                        {logoutError}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </>
+                ) : (
+                    <Link
+                        to="/profile"
+                        className="
+                            inline-flex h-10 w-10 items-center justify-center
+                            rounded-full bg-primary/10 text-text
+                            hover:bg-primary/30 drop-shadow-sm
+                        "
+                        aria-label="View profile"
+                    >
+                        <User className="h-5 w-5 text-primary" />
+                    </Link>
+                )}
+            </div>
 
             <a
                 href="tel:911"
@@ -151,14 +297,14 @@ export default function Navbar() {
                 "
                 aria-label="Call 911"
             >
-                <Phone className="h-3 w-3" aria-hidden="true" /> 
+                <Phone className="h-3 w-3" aria-hidden="true" />
                 SOS
             </a>
 
             <button
                 className="
                     ml-2 inline-flex cursor-pointer border-0
-                 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 
+                 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200
                     rounded-md p-2 text-text
                     md:hidden"
                 type="button"
@@ -172,7 +318,11 @@ export default function Navbar() {
                 )}
             </button>
 
-            
+            {logoutError && (
+                <p role="alert" className="sr-only">
+                    {logoutError}
+                </p>
+            )}
         </nav>
     );
 }
