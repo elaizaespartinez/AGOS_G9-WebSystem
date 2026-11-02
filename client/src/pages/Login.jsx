@@ -63,7 +63,7 @@ function Login(){
 
         try {
             await signInWithGoogle();
-            // Supabase redirects the user to Google.
+
         } catch (error) {
             console.error("Google login error:", error);
             setError(

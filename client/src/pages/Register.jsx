@@ -47,7 +47,7 @@ function Register() {
     const [success, setSuccess] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    // Move focus to the heading when the step changes (keyboard and screen reader friendly)
+
     const headingRef = useRef(null);
     const isFirstRender = useRef(true);
 
@@ -128,10 +128,10 @@ function Register() {
             }
 
             if (data.session) {
-                // Email confirmation is disabled.
+    
                 window.location.href = "/";
             } else {
-                // Email confirmation is enabled.
+   
                 setSuccess(
                     "Registration submitted! Please check your email to confirm your account."
                 );
@@ -152,7 +152,6 @@ function Register() {
         <main className="flex min-h-dvh items-center justify-center bg-primary p-4 md:py-10">
             <div className="grid w-full max-w-5xl grid-cols-1 overflow-hidden rounded-2xl bg-white shadow-2xl md:grid-cols-[1fr_1.25fr]">
 
-                {/* Brand panel (desktop only) */}
                 <section className="hidden flex-col justify-between gap-8 bg-secondary p-10 text-white md:flex">
                     <div className="w-fit rounded-xl bg-white p-3">
                         <img src={logo} alt="AGOS Logo" className="h-12 w-auto object-contain" />
@@ -177,10 +176,8 @@ function Register() {
                     <p className="font-bold italic text-white/80">Sa bawat AGOS, may gabay.</p>
                 </section>
 
-                {/* Form panel */}
                 <section className="flex flex-col gap-4 bg-white p-6 text-text md:px-10 md:py-8">
 
-                    {/* Mobile header: back icon, logo, spacer to keep the logo centered */}
                     <div className="flex items-center justify-between md:hidden">
                         <Link
                             to="/"
@@ -193,7 +190,6 @@ function Register() {
                         <span className="w-11" aria-hidden="true" />
                     </div>
 
-                    {/* Desktop back link */}
                     <Link
                         to="/"
                         className="hidden min-h-11 w-fit items-center gap-2 rounded-full bg-primary/10 px-4 text-sm font-semibold text-secondary transition-colors hover:bg-primary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 md:inline-flex"
