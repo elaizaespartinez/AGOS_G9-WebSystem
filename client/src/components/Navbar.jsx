@@ -25,7 +25,6 @@ export default function Navbar() {
     const { user, loading } = useAuth();
     const navigate = useNavigate();
 
-    // Close the desktop account menu on outside click or Escape
     useEffect(() => {
         if (!menuOpen) return;
 
@@ -158,7 +157,6 @@ export default function Navbar() {
                     </li>
                 ))}
 
-                {/* Mobile: Logout sits right below the Emergency link */}
                 {user && (
                     <li className="w-full md:hidden">
                         <hr className="mb-4 border-gray-200" />
@@ -204,7 +202,7 @@ export default function Navbar() {
                 </li>
             </ul>
 
-            {/* Desktop: profile icon (menu when logged in, login link when not) */}
+
             <div ref={menuRef} className="relative ml-auto hidden md:ml-8 md:block">
                 {user ? (
                     <>
