@@ -15,37 +15,59 @@ export default function AuthCallback() {
 
         const handleCallback = async () => {
             try {
-                const { data, error } =
-                    await supabase.auth.getSession();
+                // Get the authenticated user
+                const {
+                    data: { session },
+                    error: authError,
+                } = await supabase.auth.getSession();
 
-                if (error) throw error;
+                if (authError) throw authError;
 
-                const user = data.session?.user;
+                const user = session?.user;
 
                 if (!user) {
                     navigate("/login", { replace: true });
                     return;
                 }
 
-                const metadata = user.user_metadata ?? {};
-                const name = metadata.name || metadata.full_name || metadata.fullName;
+                // Get the user's profile from the database
+                const { data: profile, error: profileError } =
+                    await supabase
+                        .from("profiles")
+                        .select(
+                            "name, phone_number, province_id, city_id, barangay_id"
+                        )
+                        .eq("id", user.id)
+                        .maybeSingle();
 
+                if (profileError) throw profileError;
+
+                // Check whether all required profile fields are completed
                 const isProfileComplete = Boolean(
-                    name?.trim() &&
-                    metadata.province_id &&
-                    metadata.city_id &&
-                    metadata.barangay_id
+                    profile?.name?.trim() &&
+                    profile?.phone_number?.trim() &&
+                    profile?.province_id &&
+                    profile?.city_id &&
+                    profile?.barangay_id
                 );
 
+                // Redirect based on profile completion
                 navigate(
                     isProfileComplete
                         ? "/"
                         : "/complete-profile",
                     { replace: true }
                 );
+
             } catch (err) {
                 console.error("Authentication callback error:", err);
-                setError(getAuthErrorMessage(err, "Unable to finish sign-in. Please try again."));
+
+                setError(
+                    getAuthErrorMessage(
+                        err,
+                        "Unable to finish sign-in. Please try again."
+                    )
+                );
             }
         };
 
@@ -56,11 +78,17 @@ export default function AuthCallback() {
         return (
             <main className="flex min-h-dvh items-center justify-center p-6">
                 <div className="text-center">
-                    <p role="alert" className="mb-4 text-red-600">
+                    <p
+                        role="alert"
+                        className="mb-4 text-red-600"
+                    >
                         {error}
                     </p>
+
                     <button
-                        onClick={() => navigate("/login", { replace: true })}
+                        onClick={() =>
+                            navigate("/login", { replace: true })
+                        }
                         className="rounded-lg bg-secondary px-4 py-2 text-white"
                     >
                         Return to Login

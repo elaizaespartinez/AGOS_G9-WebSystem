@@ -9,8 +9,11 @@ const links = [
     ["Home", "/"],
     ["Flood Map", "/flood-map"],
     ["Transportation", "/transportation"],
+    ["Report", "/report"],
     ["Announcements", "/announcements"],
     ["Emergency", "/emergency"],
+
+    
 ];
 
 export default function Navbar() {

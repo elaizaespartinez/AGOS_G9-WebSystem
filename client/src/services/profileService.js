@@ -1,31 +1,31 @@
+import { supabase } from "../lib/supabaseClient";
 
-const NOT_PROVIDED = "Not provided";
+export const getProfileWithAddress = async (user) => {
+    if (!user) return null;
 
-export const getProfileData = (user) => {
-    if (!user) {
-        return null;
-    }
+    const { data, error } = await supabase
+        .from("profiles")
+        .select(`
+            name,
+            phone_number,
+            phone_verified,
+            province:provinces(name),
+            city:cities_municipalities(name),
+            barangay:barangays(name)
+        `)
+        .eq("id", user.id)
+        .single();
 
-    const metadata = user.user_metadata ?? {};
+    if (error) throw error;
 
     return {
         id: user.id,
-        name: metadata.name || NOT_PROVIDED,
-        email: user.email || NOT_PROVIDED,
-        province:
-            metadata.province_name ||
-            metadata.province ||
-            metadata.province_id ||
-            NOT_PROVIDED,
-        city:
-            metadata.city_name ||
-            metadata.city ||
-            metadata.city_id ||
-            NOT_PROVIDED,
-        barangay:
-            metadata.barangay_name ||
-            metadata.barangay ||
-            metadata.barangay_id ||
-            NOT_PROVIDED,
+        name: data.name || "Not provided",
+        email: user.email || "Not provided",
+        phone_number: data.phone_number || null,
+        phone_verified: data.phone_verified ?? false,
+        province: data.province?.name || "Not provided",
+        city: data.city?.name || "Not provided",
+        barangay: data.barangay?.name || "Not provided",
     };
 };

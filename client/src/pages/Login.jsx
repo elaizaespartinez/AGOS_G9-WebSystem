@@ -1,7 +1,7 @@
+import logo from "../assets/agos_logo.png";
 import { ArrowLeft, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { useState } from "react";
 import googleLogo from "../assets/google-logo.png";
-import login from "../assets/visuals/login.png";
 import {Link, useNavigate} from "react-router-dom";
 import {signIn, signInWithGoogle} from "../services/authService";
 import { getAuthErrorMessage } from "../services/authError";
@@ -76,32 +76,54 @@ function Login(){
     return (
         <main className="flex min-h-dvh items-center justify-center bg-primary p-4 md:py-10">
 
-            <div className="relative grid w-full max-w-md grid-cols-1 overflow-hidden rounded-2xl bg-white shadow-2xl md:max-w-4xl md:grid-cols-2">
+            <div className="grid w-full max-w-md grid-cols-1 overflow-hidden rounded-2xl bg-white shadow-2xl md:max-w-4xl md:grid-cols-2">
 
-                <Link
-                    to="/"
-                    className="absolute left-3 top-3 z-10 inline-flex min-h-11 items-center gap-2 rounded-full bg-primary/10 px-4 text-sm font-semibold text-secondary transition-colors hover:bg-primary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 md:left-4 md:top-4"
-                >
-                    <ArrowLeft size={16} aria-hidden="true" />
-                    <span className="max-md:sr-only">Back to homepage</span>
-                </Link>
+                {/* Logo panel (desktop only) */}
+                <section className="relative hidden flex-col items-center justify-center gap-5 border-r border-gray-200 bg-white p-8 md:flex">
+                    <Link
+                        to="/"
+                        className="absolute left-5 top-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-primary/10 px-4 text-sm font-semibold text-secondary transition-colors hover:bg-primary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
+                    >
+                        <ArrowLeft size={16} aria-hidden="true" />
+                        Back to homepage
+                    </Link>
 
-                <section className="hidden items-center justify-center bg-white p-8 md:flex">
                     <img
-                        src={login}
-                        alt=""
-                        aria-hidden="true"
-                        loading="lazy"
-                        className="h-auto w-full max-w-xs object-contain"
+                        src={logo}
+                        alt="AGOS Logo"
+                        className="h-auto w-56 max-w-full object-contain"
                     />
+
+                    <p className="max-w-xs text-balance text-center text-lg font-bold italic text-text">
+                        <span className="text-primary">A</span>biso at{" "}
+                        <span className="text-primary">G</span>abay sa{" "}
+                        <span className="text-primary">O</span>ras ng{" "}
+                        <span className="text-primary">S</span>akuna
+                    </p>
                 </section>
 
-                <section className="flex flex-col justify-center bg-white p-6 pt-20 text-text md:p-8">
+                {/* Form panel */}
+                <section className="flex flex-col justify-center gap-4 bg-white p-6 text-text md:px-8 md:py-8">
 
-                    <h1 className="text-center text-2xl font-extrabold">Login</h1>
-                    <p className="mb-5 mt-1 text-center text-sm text-text/70">
-                        Welcome back! Log in to continue.
-                    </p>
+                    {/* Mobile header: back icon, logo, spacer to keep the logo centered */}
+                    <div className="flex items-center justify-between md:hidden">
+                        <Link
+                            to="/"
+                            aria-label="Back to homepage"
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-secondary transition-colors hover:bg-primary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
+                        >
+                            <ArrowLeft size={18} aria-hidden="true" />
+                        </Link>
+                        <img src={logo} alt="AGOS Logo" className="h-10 w-auto object-contain" />
+                        <span className="w-11" aria-hidden="true" />
+                    </div>
+
+                    <div>
+                        <h1 className="text-2xl font-extrabold">Login</h1>
+                        <p className="mt-1 text-sm text-text/70">
+                            Welcome back! Log in to continue.
+                        </p>
+                    </div>
 
                     <form noValidate onSubmit={handleLogin} className="flex flex-col gap-4">
 
