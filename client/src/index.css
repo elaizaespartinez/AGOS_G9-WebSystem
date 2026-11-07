@@ -7,7 +7,7 @@
     --color-primary-hover: #1b727d;
 
     --color-secondary: #1B1C68; /*blue*/
-    --color-secondary-hover: #0f0f3d;
+    --color-secondary-hover: #302D91 ;
     --color-background: #E5EAEB; /*white accent*/
     --color-card: #FFFFFF; /*white*/ 
     --color-text: #333333; /*dark gray*/
@@ -29,6 +29,6 @@
 
 body {
     font-family: var(--font-agos);
-    background-color: var(--color-white);
+    background-color: var(--color-background);
     color: var(--color-text);
 }

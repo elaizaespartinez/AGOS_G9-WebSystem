@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {Link} from "react-router-dom";
 import ServiceCard from "../components/ServiceCard";
-import { Map, BusFront, PhoneIncoming, ContactRound, Cloud, MapPin, WavesHorizontal, OctagonAlert, PhoneCall, MoveRight} from "lucide-react";
+import { Map, BusFront, PhoneIncoming, ContactRound, Cloud, MapPin, WavesHorizontal, OctagonAlert, PhoneCall, MoveRight, Droplets, Wind, CloudRain, Umbrella} from "lucide-react";
 import ContactUs from "./ContactUs";
 import MapImg from "../assets/visuals/map.png";
 import {
@@ -104,11 +104,18 @@ function Home() {
         ({ key }) => key === String(floodStatus.risk).toLowerCase()
     );
 
+    const weatherStats = [
+        { icon: Droplets, label: "Humidity", value: weather.humidity },
+        { icon: Wind, label: "Wind", value: weather.wind },
+        { icon: CloudRain, label: "Rainfall", value: weather.rainfall },
+        { icon: Umbrella, label: "Chance of rain", value: weather.rainChance },
+    ];
+
     const toTel = (number) =>
         `tel:${number.replace(/[^\d+]/g, "")}`;
 
     return (
-        <main className="flex flex-col gap-4 bg-white p-2 md:px-32">
+        <main className="flex flex-col gap-4 bg-background p-2 md:px-32">
             {(isLoading || hasLoadError) && (
                 <p
                     role={hasLoadError ? "alert" : "status"}
@@ -172,36 +179,54 @@ function Home() {
                 </Link>
             </article>
 
-            <section className="flex items-center justify-between rounded-xl bg-primary p-4 text-white">
-                <div className="flex w-0 flex-1 items-center gap-2">
-                    <Cloud size={40} className="text-white/70" />
+            <section
+                aria-label="Current weather"
+                className="grid grid-cols-1 gap-4 md:grid-cols-3"
+            >
+                <div className="flex flex-col justify-between gap-4 rounded-xl bg-primary p-4 text-white md:col-span-1 md:p-5">
+                    <div className="flex items-center gap-3">
+                        <Cloud size={48} className="shrink-0 text-white/70" aria-hidden="true" />
 
-                    <div>
-                        <h1 className="text-2xl font-bold md:text-4xl">
-                            {weather.temperature}
-                        </h1>
+                        <div>
+                            <h1 className="text-3xl font-bold md:text-4xl">
+                                {weather.temperature}
+                            </h1>
 
-                        <p className="text-sm">
-                            {weather.condition}
+                            <p className="text-sm">
+                                {weather.condition}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl bg-[#1BBED2]/40 p-3">
+                        <p className="flex items-center gap-1 text-sm font-semibold">
+                            <MapPin size={14} aria-hidden="true" />
+                            {weather.location}
+                        </p>
+
+                        <p className="mt-0.5 text-xs">
+                            {weather.date} · {weather.time}
                         </p>
                     </div>
                 </div>
 
-                <div className="flex flex-1 flex-col items-end justify-end rounded-xl bg-[#1BBED2]/40 p-3">
-                  
+                <div className="grid grid-cols-2 gap-3 md:col-span-2 md:grid-cols-4">
+                    {weatherStats.map(({ icon: Icon, label, value }) => (
+                        <div
+                            key={label}
+                            className="flex flex-col items-center justify-center gap-1 rounded-xl bg-card p-4 text-center text-text shadow-elevated"
+                        >
+                            <Icon size={28} className="text-primary" aria-hidden="true" />
 
-                        <p className="text-xs font-semibold md:text-sm">
-                            {weather.location}
-                        </p>
-                    
+                            <p className="text-lg font-extrabold">
+                                {value ?? "--"}
+                            </p>
 
-                    <p className="text-xs font-bold md:text-sm">
-                        {weather.date}
-                    </p>
-
-                    <p className="text-xs md:text-sm">
-                        {weather.time}
-                    </p>
+                            <p className="text-xs text-text/60">
+                                {label}
+                            </p>
+                        </div>
+                    ))}
                 </div>
             </section>
 

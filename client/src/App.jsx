@@ -13,6 +13,9 @@ import CompleteProfile from './pages/CompleteProfile'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import AuthCallback from './pages/AuthCallback'
+import ProtectedRoute from './components/ProtectedRoute'
+import Report from './pages/Report'
+import EditProfile from './pages/EditProfile'
 
 function App() {
   return (
@@ -26,14 +29,22 @@ function App() {
         <Route path="/emergency" element={<Emergency />} />
         <Route path="/announcements" element={<Announcements />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/report" element={<Report />} />
+        <Route path="/edit-profile" element={<EditProfile />} />
       </Route>
+
 
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/complete-profile" element={<CompleteProfile />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+      </Route>
+
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AuthLayout />}>
+          <Route path="/complete-profile" element={<CompleteProfile />} />
+        </Route>
       </Route>
     </Routes>
   )

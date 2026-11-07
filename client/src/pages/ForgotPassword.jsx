@@ -12,7 +12,6 @@ const labelClass = "mb-1 block text-sm font-semibold text-text";
 const COOLDOWN_SECONDS = 60;
 const COOLDOWN_KEY = "forgotPasswordCooldownUntil";
 
-// localStorage can throw (private mode, blocked storage), so keep it guarded
 const readCooldownUntil = () => {
     try {
         return Number(localStorage.getItem(COOLDOWN_KEY)) || 0;
@@ -27,7 +26,6 @@ const saveCooldown = (seconds) => {
     try {
         localStorage.setItem(COOLDOWN_KEY, String(until));
     } catch {
-        // ignore: the in-memory countdown still works
     }
 
     return until;
@@ -53,7 +51,7 @@ function ForgotPassword() {
 
     const cooldown = Math.max(0, Math.ceil((cooldownUntil - now) / 1000));
 
-    // Keep multiple tabs in sync
+
     useEffect(() => {
         const syncFromStorage = () => {
             setCooldownUntil(readCooldownUntil());
@@ -64,7 +62,6 @@ function ForgotPassword() {
         return () => window.removeEventListener("storage", syncFromStorage);
     }, []);
 
-    // Tick once per second while a cooldown is active
     useEffect(() => {
         if (cooldownUntil <= Date.now()) return;
 
@@ -85,7 +82,7 @@ function ForgotPassword() {
 
     const handleForgotPassword = async (e) => {
         e.preventDefault();
-        if (isLoading || cooldown > 0) return; // guards Enter key and double-clicks
+        if (isLoading || cooldown > 0) return; 
 
         setError("");
         setSuccess(false);
@@ -113,7 +110,6 @@ function ForgotPassword() {
         } catch (error) {
             console.error("Forgot password error:", error);
 
-            // Supabase rate-limits reset emails; treat that as a cooldown too
             if (
                 error?.status === 429 ||
                 /security purposes|rate limit|too many requests/i.test(
