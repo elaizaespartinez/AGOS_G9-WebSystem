@@ -1,7 +1,7 @@
 const PROVIDERS = ["gemini", "groq", "openrouter"];
 
 export function loadConfig(env = process.env) {
-    const providerOrder = (env.PROVIDER_ORDER || "gemini,groq,openrouter")
+    const providerOrder = (env.PROVIDER_ORDER || "groq,gemini,openrouter")
         .split(",")
         .map((provider) => provider.trim().toLowerCase())
         .filter((provider, index, values) => PROVIDERS.includes(provider) && values.indexOf(provider) === index);

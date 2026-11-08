@@ -11,7 +11,7 @@ function ChatbotButton({ onClick, isOpen }) {
                 bottom-6
                 right-3
                 md:right-6
-                z-50
+                z-[1101]
                 flex
                 items-center
                 gap-1

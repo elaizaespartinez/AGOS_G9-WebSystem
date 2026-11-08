@@ -55,7 +55,7 @@ function ChatbotWindow() {
                 right-4
                 bottom-24
                 left-4
-                z-40
+                z-[1100]
                 flex
                 flex-col
                 rounded-xl

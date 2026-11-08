@@ -34,7 +34,7 @@ Things to do:
 	npm.cmd run dev
 	```
 
-The chatbot tries Gemini, then Groq, then OpenRouter. Temporary provider failures are retried twice with backoff before moving to the next provider. Run the mocked fallback tests with `cd server; npm test`.
+The chatbot tries Groq first, then Gemini, then OpenRouter. Temporary provider failures are retried twice with backoff before moving to the next provider. Run the mocked fallback tests with `cd server; npm test`.
 
 For now, wala pa masyado gaurd rails so pwede ma off topic ung chatbot
 ![AGOS Chatbot](<docs(not_permanent)/images/agos-chatbottest.png>)
