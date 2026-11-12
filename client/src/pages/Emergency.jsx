@@ -88,11 +88,11 @@ function Emergency() {
 
 ;
     return (
-        <main className="md:mx-32 bg-white">
+        <main className="md:mx-32 p-2 bg-background">
            
 
-            <section className="p-2 flex flex-col gap-6">
-                <article className="flex flex-col gap-6 bg-white px-6 py-8 rounded-lg shadow-elevated">
+            <section className="p-2 flex flex-col gap-6 bg-white px-6 py-8 rounded-lg shadow-elevated">
+                <article className="flex flex-col gap-6 bg-white rounded-lg ">
                     <h2 className="text-xl font-bold">Find your local response contact</h2>
                     <div className="flex flex-col gap-2 md:flex-row md:gap-8 justify-between">
                         <div className="flex flex-col gap-2 w-full">

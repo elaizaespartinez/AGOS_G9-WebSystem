@@ -1,0 +1,83 @@
+import { supabase } from "../../lib/supabaseClient";
+import {
+    reports as mockReports,
+    locations,
+    hotlines,
+    evacuationCenters,
+} from "./mockData";
+import { aggregateReports } from "./reportsService";
+
+const useMockAdmin = import.meta.env.VITE_USE_MOCK_ADMIN !== "false";
+
+export async function getOverview() {
+    if (useMockAdmin) {
+        return {
+            reports: aggregateReports(mockReports),
+            activeAlerts: 1,
+            affectedLocations: locations.filter((location) =>
+                ["affected", "evacuate"].includes(location.risk),
+            ).length,
+            connectedSources: "8/9",
+            hotlines: hotlines.filter((hotline) => hotline.active).length,
+            openCenters: evacuationCenters.filter((center) => center.status === "open").length,
+        };
+    }
+
+    const now = new Date().toISOString();
+    const [reportsResult, alertsResult, conditionsResult] = await Promise.all([
+        supabase.from("reports").select("status, expires_at"),
+        supabase
+            .from("alerts")
+            .select("id")
+            .eq("status", "active")
+            .lte("starts_at", now)
+            .gt("expires_at", now),
+        supabase
+            .from("flood_conditions")
+            .select("severity")
+            .or(`expires_at.is.null,expires_at.gt.${now}`),
+    ]);
+
+    if (reportsResult.error) throw reportsResult.error;
+    if (alertsResult.error) throw alertsResult.error;
+    if (conditionsResult.error) throw conditionsResult.error;
+
+    const reportItems = (reportsResult.data || []).map((report) => ({
+        ...report,
+        createdAt: report.created_at,
+        expiresAt: report.expires_at,
+    }));
+    return {
+        reports: aggregateReports(reportItems),
+        activeAlerts: alertsResult.data?.length || 0,
+        affectedLocations: (conditionsResult.data || []).filter((condition) =>
+            ["affected", "evacuate"].includes(condition.severity),
+        ).length,
+        connectedSources: "Supabase",
+        hotlines: 0,
+        openCenters: 0,
+    };
+}
+
+export function subscribeToOverview(onChange) {
+    if (useMockAdmin) return () => {};
+
+    const channel = supabase
+        .channel("admin-overview")
+        .on("postgres_changes", { event: "*", schema: "public", table: "reports" }, onChange)
+        .on("postgres_changes", { event: "*", schema: "public", table: "alerts" }, onChange)
+        .on("postgres_changes", { event: "*", schema: "public", table: "flood_conditions" }, onChange)
+        .subscribe();
+
+    const timer = window.setInterval(onChange, 30000);
+    const handleVisibility = () => {
+        if (document.visibilityState === "visible") onChange();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+        window.clearInterval(timer);
+        document.removeEventListener("visibilitychange", handleVisibility);
+        supabase.removeChannel(channel);
+    };
+}
