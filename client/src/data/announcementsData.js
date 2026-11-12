@@ -53,6 +53,7 @@ export const defaultAnnouncementsData = {
     ],
     monitoring: [],
     advisories: [],
+    manualAnnouncements: [],
 };
 
 export const mockAnnouncementsData = {

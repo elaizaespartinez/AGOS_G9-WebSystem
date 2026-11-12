@@ -2,7 +2,7 @@ import logo from "../assets/agos_logo.png";
 
 function Footer(){
     return(
-        <footer className="flex flex-col justify-between items-center gap-4 p-4 md:px-32 bg-primary/10 text-white">
+        <footer className="flex flex-col justify-between items-center gap-4 p-4 md:px-32 bg-primary/10 text-white mt-4">
             <div className="w-32 md:w-64">
                 <img src={logo} alt="AGOS Logo" className="w-full h-auto"/>
                 

@@ -10,6 +10,7 @@ import {
     getFloodStatusIcon,
 } from "../data/homeData";
 import { getHomeDashboard } from "../services/homeService";
+import { subscribeToPublicCommunications } from "../services/publicCommunicationsService";
 
 function Home() {
     const [homeData, setHomeData] = useState(defaultHomeData);
@@ -19,7 +20,8 @@ function Home() {
     useEffect(() => {
         let isMounted = true;
 
-        getHomeDashboard()
+        const loadDashboard = () =>
+            getHomeDashboard()
             .then((data) => {
                 if (!isMounted) return;
 
@@ -56,8 +58,12 @@ function Home() {
                 if (isMounted) setIsLoading(false);
             });
 
+        loadDashboard();
+        const unsubscribe = subscribeToPublicCommunications(loadDashboard);
+
         return () => {
             isMounted = false;
+            unsubscribe();
         };
     }, []);
 
@@ -130,7 +136,7 @@ function Home() {
             <article
                 role="alert"
                 aria-label="Active alert"
-                className={`flex flex-col gap-4 rounded-2xl border p-4 text-text shadow-elevated md:flex-row md:items-center md:p-5 ${alertStyle.card}`}
+                className={`flex flex-col gap-4 bg-white rounded-2xl border p-4 text-text shadow-elevated md:flex-row md:items-center md:p-5 ${alertStyle.card}`}
             >
                 <div className="flex min-w-0 flex-1 items-start gap-3">
                     <div
