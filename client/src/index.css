@@ -7,7 +7,7 @@
     --color-primary-hover: #1b727d;
 
     --color-secondary: #1B1C68; /*blue*/
-    --color-secondary-hover: #0f0f3d;
+    --color-secondary-hover: #302D91 ;
     --color-background: #E5EAEB; /*white accent*/
     --color-card: #FFFFFF; /*white*/ 
     --color-text: #333333; /*dark gray*/
@@ -22,7 +22,7 @@
     --font-agos-sub: 'Inter', sans-serif;
 
     --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
-    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.30);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.20);
 
     --container-agos: 1200px;
 }

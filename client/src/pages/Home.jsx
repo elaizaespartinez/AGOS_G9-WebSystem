@@ -1,102 +1,373 @@
-import ServiceCard from '../components/ServiceCard'
-import {Map, BusFront, PhoneIncoming, ContactRound, Mail, Phone} from "lucide-react";
+import { useEffect, useState } from "react";
 import {Link} from "react-router-dom";
-import register from './Register';
+import ServiceCard from "../components/ServiceCard";
+import { Map, BusFront, PhoneIncoming, ContactRound, Cloud, MapPin, WavesHorizontal, OctagonAlert, PhoneCall, MoveRight, Droplets, Wind, CloudRain, Umbrella} from "lucide-react";
+import ContactUs from "./ContactUs";
+import MapImg from "../assets/visuals/map.png";
+import {
+    defaultHomeData,
+    getAlertIcon,
+    getFloodStatusIcon,
+} from "../data/homeData";
+import { getHomeDashboard } from "../services/homeService";
 
 function Home() {
+    const [homeData, setHomeData] = useState(defaultHomeData);
+    const [isLoading, setIsLoading] = useState(true);
+    const [hasLoadError, setHasLoadError] = useState(false);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        getHomeDashboard()
+            .then((data) => {
+                if (!isMounted) return;
+
+                const dashboard =
+                    data && typeof data === "object" ? data : {};
+
+                setHomeData({
+                    ...defaultHomeData,
+                    ...dashboard,
+                    weather: {
+                        ...defaultHomeData.weather,
+                        ...dashboard.weather,
+                    },
+                    floodStatus: {
+                        ...defaultHomeData.floodStatus,
+                        ...dashboard.floodStatus,
+                    },
+                    activeAlert: {
+                        ...defaultHomeData.activeAlert,
+                        ...dashboard.activeAlert,
+                    },
+                    hotlines: Array.isArray(dashboard.hotlines)
+                        ? dashboard.hotlines
+                        : defaultHomeData.hotlines,
+                });
+            })
+            .catch((error) => {
+                if (!isMounted) return;
+
+                console.error("Unable to load the Home dashboard data.", error);
+                setHasLoadError(true);
+            })
+            .finally(() => {
+                if (isMounted) setIsLoading(false);
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    const { weather, floodStatus, activeAlert, hotlines } = homeData;
+    const floodStatusIcon = getFloodStatusIcon(floodStatus.risk);
+    const alertIcon = getAlertIcon(activeAlert.type, activeAlert.severity);
+    const alertStyles = {
+        high: {
+            card: "border-risk-high/30 bg-white/10",
+            icon: "bg-risk-high",
+            label: "text-red-800",
+            link: "bg-red-800 hover:bg-red-700 focus-visible:ring-risk-high",
+        },
+        moderate: {
+            card: "border-risk-moderate/30 bg-white/10",
+            icon: "bg-risk-moderate",
+            label: "text-risk-moderate",
+            link: "bg-risk-moderate hover:bg-orange-700 focus-visible:ring-risk-moderate",
+        },
+        low: {
+            card: "border-risk-low/40 bg-white/10",
+            icon: "bg-risk-low",
+            label: "text-yellow-800",
+            link: "bg-yellow-600 hover:bg-yellow-700 focus-visible:ring-yellow-600",
+        },
+        safe: {
+            card: "border-primary/30 bg-slate-50",
+            icon: "bg-primary",
+            label: "text-primary-hover",
+            link: "bg-primary hover:bg-primary-hover focus-visible:ring-primary",
+        },
+    };
+    const alertStyle =
+        alertStyles[String(activeAlert.severity).toLowerCase()] ??
+        alertStyles.unknown;
+
+    const floodScale = [
+        { key: "safe", label: "Safe", bar: "bg-safe" },
+        { key: "low", label: "Low", bar: "bg-risk-low" },
+        { key: "moderate", label: "Moderate", bar: "bg-risk-moderate" },
+        { key: "high", label: "High", bar: "bg-risk-high" },
+    ];
+    const floodLevelIndex = floodScale.findIndex(
+        ({ key }) => key === String(floodStatus.risk).toLowerCase()
+    );
+
+    const weatherStats = [
+        { icon: Droplets, label: "Humidity", value: weather.humidity },
+        { icon: Wind, label: "Wind", value: weather.wind },
+        { icon: CloudRain, label: "Rainfall", value: weather.rainfall },
+        { icon: Umbrella, label: "Chance of rain", value: weather.rainChance },
+    ];
+
+    const toTel = (number) =>
+        `tel:${number.replace(/[^\d+]/g, "")}`;
+
     return (
-        <main>
+        <main className="flex flex-col gap-4 bg-background p-2 md:px-32">
+            {(isLoading || hasLoadError) && (
+                <p
+                    role={hasLoadError ? "alert" : "status"}
+                    className="px-2 py-1 text-xs text-text/60"
+                >
+                    {isLoading
+                        ? "Loading live information..."
+                        : "⚠ Unable to update live information. Showing available data."}
+                </p>
+            )}
 
-            {/* current conditions */}
-            <section>
-                <div>
-                    <h1>28&deg;C</h1>
-                    <p>Cloudy</p>
-                </div>
-
-                <div>
-                    <p>Brgy. Alangilan</p>
-                    <p>MON, September 28</p>
-                    <p>4:48:30 PM</p>
-                </div>
-            </section>
-
-            {/* agos dashboard */}
-            <section>
-                
-                <header>
-                    <h1>AGOS Dashboard</h1>
-                </header>
-
-                <div>
-                    <div>
-                        <article>
-                            <h3>Current Flood Status</h3>
-                            <p>Alangilan, Batangas City</p>
-                            <p>Moderate Risk</p>
-                        </article>
-                        <article>
-                            <h3>Active Alerts</h3>
-                            <p>Heavy Rainfall</p>
-                            <p>Flooding Reported in Cuta</p>
-                        </article>
+            <article
+                role="alert"
+                aria-label="Active alert"
+                className={`flex flex-col gap-4 rounded-2xl border p-4 text-text shadow-elevated md:flex-row md:items-center md:p-5 ${alertStyle.card}`}
+            >
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <div
+                        className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full text-white ${alertStyle.icon}`}
+                    >
+                        {alertIcon ? (
+                            <img
+                                src={alertIcon}
+                                alt={`${activeAlert.severity} ${activeAlert.type} alert`}
+                                className="h-full w-full object-cover"
+                            />
+                        ) : (
+                            <OctagonAlert size={24} aria-hidden="true" />
+                        )}
                     </div>
 
-                    <article>
-                        <header>
-                            <h3>Quick Emergency Hotline</h3>
-                           
-                        </header>
+                    <div className="min-w-0 flex-1">
+                        <p
+                            className={`text-xs font-extrabold uppercase tracking-wider ${alertStyle.label}`}
+                        >
+                            {activeAlert.severity} alert
+                        </p>
 
-                        <ul>
-                            <li>
-                                <p>Mayor's Action Center</p>
-                                <div>
-                                    <a href="tel:7231511">723-1511</a>
-                                </div>
-                            </li>
+                        <h3 className="text-lg font-extrabold leading-snug">
+                            {activeAlert.title}
+                        </h3>
 
-                            <li>
-                                <p>24/7 EBD Emergency Health Hotline</p>
-                                <div>
-                                    <a href="tel:09992226626">0999-222-6626</a>
-                                </div>
-                            </li>
+                        <p className="text-sm leading-relaxed text-text/75">
+                            {activeAlert.description}
+                        </p>
 
-                            <li>
-                                <p>City DRRM</p>
-                                <div>
-                                    <a href="tel:7023902">702-3902</a>
-                                </div>
-                            </li>
-
-                            <li>
-                                <p>BFP Batangas City</p>
-                                <div>
-                                    <a href="tel:4257163">425-7163</a>
-                                    <a href="tel:09156021984">09156021984</a>
-                                </div>
-                            </li>
-
-                            <li>
-                                <p>Batangas Component Police Station</p>
-                                <div>
-                                    <a href="tel:7232030">723-2030</a>
-                                    <a href="tel:09164291515">0916-429-1515</a>
-                                    <a href="tel:09996946805">0999-694-6805</a>
-                                </div>
-                            </li>
-                        </ul>
-                    </article>
+                        <p className="mt-2 text-xs text-text/60">
+                            Updated at {activeAlert.updatedAt} · Source:{" "}
+                            {activeAlert.source}
+                        </p>
+                    </div>
                 </div>
 
+                <Link
+                    to="/flood-map"
+                    className={`inline-flex min-h-12 w-full shrink-0 items-center justify-center rounded-lg px-6 text-center text-sm font-bold text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 md:w-auto ${alertStyle.link}`}
+                >
+                    View flood map
+
+                    <MoveRight size={16} className="ml-2" />
+                </Link>
+            </article>
+
+            <section
+                aria-label="Current weather"
+                className="grid grid-cols-1 gap-4 md:grid-cols-3"
+            >
+                <div className="flex flex-col justify-between gap-4 rounded-xl bg-primary p-4 text-white md:col-span-1 md:p-5">
+                    <div className="flex items-center gap-3">
+                        <Cloud size={48} className="shrink-0 text-white/70" aria-hidden="true" />
+
+                        <div>
+                            <h1 className="text-3xl font-bold md:text-4xl">
+                                {weather.temperature}
+                            </h1>
+
+                            <p className="text-sm">
+                                {weather.condition}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl bg-[#1BBED2]/40 p-3">
+                        <p className="flex items-center gap-1 text-sm font-semibold">
+                            <MapPin size={14} aria-hidden="true" />
+                            {weather.location}
+                        </p>
+
+                        <p className="mt-0.5 text-xs">
+                            {weather.date} · {weather.time}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 md:col-span-2 md:grid-cols-4">
+                    {weatherStats.map(({ icon: Icon, label, value }) => (
+                        <div
+                            key={label}
+                            className="flex flex-col items-center justify-center gap-1 rounded-xl bg-card p-4 text-center text-text shadow-elevated"
+                        >
+                            <Icon size={28} className="text-primary" aria-hidden="true" />
+
+                            <p className="text-lg font-extrabold">
+                                {value ?? "--"}
+                            </p>
+
+                            <p className="text-xs text-text/60">
+                                {label}
+                            </p>
+                        </div>
+                    ))}
+                </div>
             </section>
 
-            {/*quick actions*/}
-            <section>
-                <h1>Quick Actions</h1>
+            <section aria-labelledby="dashboard-heading" className="flex flex-col gap-1 rounded-xl p-2">
+                <header className="w-fit">
+                    <h2 id="dashboard-heading" className="text-2xl font-extrabold text-text md:text-3xl">
+                        Dashboard
+                    </h2>
+                </header>
 
-                <div>
+                <div className="grid grid-cols-1 items-start gap-4 py-3 md:grid-cols-2">
+                    <article className="flex flex-col gap-4 rounded-2xl bg-secondary p-4 h-full text-white shadow-elevated md:p-6">
+                        <header className="flex items-center justify-between gap-2">
+                            <h3 className="text-sm font-semibold md:text-base">
+                                Current Flood Status
+                            </h3>
+                            <WavesHorizontal size={32} aria-hidden="true" />
+                        </header>
+
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white">
+                                {floodStatusIcon && (
+                                    <img
+                                        src={floodStatusIcon}
+                                        alt={`${floodStatus.risk} flood status`}
+                                        className="h-full w-full object-contain"
+                                    />
+                                )}
+                            </div>
+
+                            <div>
+                                <p className="text-sm text-white/80">
+                                    {floodStatus.location}
+                                </p>
+                                <p className="text-xl font-extrabold md:text-2xl">
+                                    {floodStatus.level}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div aria-hidden="true" className="grid grid-cols-4 gap-1.5">
+                                {floodScale.map(({ key, bar }, i) => (
+                                    <div
+                                        key={key}
+                                        className={`h-2 rounded ${i <= floodLevelIndex ? bar : "bg-white/25"}`}
+                                    />
+                                ))}
+                            </div>
+
+                            <div className="mt-1.5 grid grid-cols-4 text-xs text-white/80">
+                                {floodScale.map(({ key, label }, i) => (
+                                    <span
+                                        key={key}
+                                        className={i === floodLevelIndex ? "font-bold text-white" : ""}
+                                    >
+                                        {label}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+
+                        {floodStatus.updatedAt && (
+                            <div>
+                                <p className="text-xs text-white/70">
+                                    Updated {floodStatus.updatedAt}
+                                </p>
+                                <p className="text-xs text-white/70">{floodStatus.source ? `Source: ${floodStatus.source}` : ""}</p>
+                            </div>
+                        )}
+                    </article>
+
+                    {/* Hotlines */}
+                    <article className="flex flex-col gap-3 rounded-2xl bg-card p-4 text-text shadow-elevated md:p-6">
+                        <header className="flex items-center justify-between gap-2">
+                            <h3 className="text-sm font-bold text-primary md:text-lg">
+                                Quick Emergency Hotline
+                            </h3>
+                            <PhoneCall size={32} className="text-primary" aria-hidden="true" />
+                        </header>
+
+                        {/* <a
+                            href="tel:911"
+                            className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-red-800 text-lg font-extrabold text-white transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-text focus-visible:ring-offset-2"
+                        >
+                            <PhoneCall size={22} aria-hidden="true" />
+                            Call 911
+                        </a> */}
+
+                        {hotlines.length === 0 ? (
+                            <p className="text-sm text-text/60">
+                                Hotline information unavailable.
+                            </p>
+                        ) : (
+                            <ul className="flex flex-col gap-2">
+                                {hotlines.map(({ id, name, numbers }) => (
+                                    <li
+                                        key={id || name}
+                                        className="flex flex-col gap-1.5 rounded-xl bg-background/60 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                                    >
+                                        <span className="text-sm font-semibold sm:max-w-[55%]">
+                                            {name}
+                                        </span>
+
+                                        <div className="flex flex-wrap gap-x-4 sm:justify-end">
+                                            {numbers.map((number) => (
+                                                <a
+                                                    key={number}
+                                                    href={toTel(number)}
+                                                    className="inline-flex min-h-11 items-center gap-1.5 rounded text-sm font-bold text-primary transition-colors hover:text-primary-hover hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                                >
+                                                    <PhoneCall size={14} aria-hidden="true" />
+                                                    {number}
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+
+                        <Link
+                            to="/emergency"
+                            className="py-1 text-center text-sm font-bold text-primary hover:text-primary-hover hover:underline"
+                        >
+                            See all hotlines →
+                        </Link>
+                    </article>
+                </div>
+            </section>
+
+            <hr className="border-t border-text/20" />
+
+            <section className="flex flex-col gap-2 rounded-xl p-2">
+                <header className="w-fit">
+                    <h2 className="text-2xl font-extrabold text-text md:text-3xl">
+                        Quick Actions
+                    </h2>
+                </header>
+
+                <div className="grid grid-cols-1 gap-3 py-3 md:grid-cols-4">
                     <ServiceCard
                         icon={<Map size={32} />}
                         title="Flood Map"
@@ -121,74 +392,68 @@ function Home() {
                     <ServiceCard
                         icon={<ContactRound size={32} />}
                         title="Contact Us"
-                        description="Reach the AGOS  team for inquiries, concerns, feedback, or assistance."
+                        description="Reach the AGOS team for inquiries, concerns, feedback, or assistance."
                         to="#contact"
                     />
                 </div>
             </section>
 
-            {/*about agos*/}
-            <section>
-                <h2>
-                    About
-                </h2>
+            <hr className="border-t border-text/20" />
 
-                <div>
-                    <div><img src="" alt="" /></div>
-                    <div>
-                        <p>Sa bawat AGOS, may gabay</p>
-                        <p>The name AGOS (“current” or “flow”) reflects both the flow of floodwater that the system monitors and the flow of timely information it delivers back to communities, turning a hazard into a guided, navigable situation.</p>
+            <section className="bg-background -mx-2 md:-mx-32">
+                <div className="flex flex-col gap-6 p-4 md:px-32">
+                    <header>
+                        <h2 className="text-2xl font-extrabold text-text md:text-3xl">
+                            About AGOS
+                        </h2>
+                    </header>
+
+                    <div className="grid grid-cols-1 items-center gap-6 md:grid-cols-2">
+                        <figure className="relative overflow-hidden rounded-2xl bg-gray-100 shadow-elevated">
+                            <img
+                                src={MapImg}
+                                alt="AGOS flood monitoring map"
+                                className="h-[280px] w-full object-cover transition-transform duration-700 hover:scale-105 md:h-[380px]"
+                            />
+
+                            <figcaption className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-5 pt-12">
+                                <p className="text-sm font-semibold text-white">
+                                    Flood Monitoring & Community Safety
+                                </p>
+                            </figcaption>
+                        </figure>
+
+                        <div className="flex flex-col gap-4 md:px-6">
+                            <p className="text-lg font-bold italic text-primary">
+                                Sa bawat AGOS, may gabay.
+                            </p>
+
+                            <h3 className="text-2xl font-extrabold text-text md:text-3xl">
+                                Helping communities navigate hazards with confidence.
+                            </h3>
+
+                            <p className="text-sm leading-relaxed text-text/70 md:text-base">
+                                AGOS is a disaster information and navigation platform
+                                designed to help communities in Batangas City stay informed,
+                                understand flood risks, and find safer routes during
+                                hazardous conditions.
+                            </p>
+
+                            <p className="text-sm leading-relaxed text-text/70 md:text-base">
+                                The name AGOS, meaning “current” or “flow,” represents both
+                                the movement of floodwater and the flow of timely information
+                                to the community.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            {/*contact form*/}
-            <section id="contact">
-                <header>
-                    <h2>Contact Us</h2>
-                </header>
-
-                <div>
-                    <form>
-                        <div>
-                            <label htmlFor="name">Full Name</label>
-                            <input type="text" id="name" name="name" required className="border"/>
-                        </div>
-                        <div>
-                            <label htmlFor="email">Email Address</label>
-                            <input type="email" id="email" name="email" required className="border"/>
-                        </div>
-                        <div>
-                            <label htmlFor="number">Contact Number</label>
-                            <input type="tel" id="number" name="number" required className="border"/>
-                        </div>
-                        <div>
-                            <label htmlFor="location">Location</label>
-                            <input type="text" id="location" name="location"  className="border"/>
-                        </div>
-                        <div>
-                            <label htmlFor="message">Message</label>
-                            <textarea id="message" name="message" required className="border"></textarea>
-                        </div>
-
-                         <button type="submit" className="border">Send Message</button>
-                    </form>     
-                </div>
-
-                <div>
-                    <div>
-                        <Mail size={32} />
-                        <a href="mailto:support@agos.ph">support@agos.ph</a>
-                    </div>
-                    <div>
-                        <Phone size={32} />
-                        <a href="tel:+639123456789">+63 912 345 6789</a>
-                    </div>
-                </div>
+            <section id="contact" className="bg-background -mx-2 md:-mx-32">
+                <ContactUs />
             </section>
-
         </main>
-    )
+    );
 }
-
+  
 export default Home;
