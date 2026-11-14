@@ -1,15 +1,22 @@
 # _G9-WebSystem
 Disaster Management Website 
 
-How to run:
-Run 2 terminals:
+## How to run
 
-Terminal 1:
+Open two terminals.
+
+### Terminal 1: Server
+
+```powershell
 cd "C:\Users\YourName\Projects\_G9-WebSystem\server"
 npm install
 npm start
+```
 
-Terminal 2:
+### Terminal 2: Client
+
+```powershell
 cd "C:\Users\YourName\Projects\_G9-WebSystem\client"
 npm.cmd install
 npm.cmd run dev
+```
