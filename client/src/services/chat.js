@@ -10,6 +10,10 @@ export async function askChat(messages) {
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
+            if ([502, 503, 504].includes(response.status)) {
+                console.error(`Chat server is unavailable (HTTP ${response.status}). Using the offline safety guide.`);
+                return { reply: OFFLINE_REPLY, provider: "local-safety-guide" };
+            }
             throw new Error(data.error || "The chat service is unavailable right now.");
         }
 

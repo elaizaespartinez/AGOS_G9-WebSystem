@@ -1,30 +1,9 @@
 import { supabase } from "../../lib/supabaseClient";
-import {
-    reports as mockReports,
-    locations,
-    hotlines,
-    evacuationCenters,
-} from "./mockData";
 import { aggregateReports } from "./reportsService";
 
-const useMockAdmin = import.meta.env.VITE_USE_MOCK_ADMIN !== "false";
-
 export async function getOverview() {
-    if (useMockAdmin) {
-        return {
-            reports: aggregateReports(mockReports),
-            activeAlerts: 1,
-            affectedLocations: locations.filter((location) =>
-                ["affected", "evacuate"].includes(location.risk),
-            ).length,
-            connectedSources: "8/9",
-            hotlines: hotlines.filter((hotline) => hotline.active).length,
-            openCenters: evacuationCenters.filter((center) => center.status === "open").length,
-        };
-    }
-
     const now = new Date().toISOString();
-    const [reportsResult, alertsResult, conditionsResult] = await Promise.all([
+    const [reportsResult, alertsResult, conditionsResult, hotlinesResult, centersResult] = await Promise.all([
         supabase.from("reports").select("status, expires_at"),
         supabase
             .from("alerts")
@@ -36,11 +15,15 @@ export async function getOverview() {
             .from("flood_conditions")
             .select("severity")
             .or(`expires_at.is.null,expires_at.gt.${now}`),
+        supabase.from("hotlines").select("id").eq("active", true),
+        supabase.from("evacuation_centers").select("id").eq("status", "open"),
     ]);
 
     if (reportsResult.error) throw reportsResult.error;
     if (alertsResult.error) throw alertsResult.error;
     if (conditionsResult.error) throw conditionsResult.error;
+    if (hotlinesResult.error) throw hotlinesResult.error;
+    if (centersResult.error) throw centersResult.error;
 
     const reportItems = (reportsResult.data || []).map((report) => ({
         ...report,
@@ -54,14 +37,12 @@ export async function getOverview() {
             ["affected", "evacuate"].includes(condition.severity),
         ).length,
         connectedSources: "Supabase",
-        hotlines: 0,
-        openCenters: 0,
+        hotlines: hotlinesResult.data?.length || 0,
+        openCenters: centersResult.data?.length || 0,
     };
 }
 
 export function subscribeToOverview(onChange) {
-    if (useMockAdmin) return () => {};
-
     const channel = supabase
         .channel("admin-overview")
         .on("postgres_changes", { event: "*", schema: "public", table: "reports" }, onChange)

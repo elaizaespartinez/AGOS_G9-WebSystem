@@ -1,535 +1,248 @@
-import { useMemo, useState } from "react";
-import {
-    CirclePlus,
-    Crosshair,
-    Filter,
-    MapPin,
-    Pencil,
-    RotateCcw,
-    Search,
-    Trash2,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
 import AdminPageHeader from "../../components/admin/AdminPageHeader";
-import ConfirmDialog from "../../components/admin/ConfirmDialog";
 import EmptyState from "../../components/admin/EmptyState";
-import HazardMap from "../../components/admin/HazardMap";
-import HazardZoneForm, {
-    defaultHazardZone,
-} from "../../components/admin/HazardZoneForm";
-import SectionPanel from "../../components/admin/SectionPanel";
+import FloodReportEntryMap from "../../components/admin/FloodReportEntryMap";
 import StatusPill from "../../components/admin/StatusPill";
 import {
-    mockHazardZones,
-    hazardSeverities,
-    hazardStatuses,
-    hazardTypes,
-} from "../../data/hazardZonesData";
+    createFloodReport,
+    deleteFloodReport,
+    listFloodReports,
+    resolveFloodReport,
+} from "../../services/floodReportsService";
 
-const severityStatusStyles = {
-    Low: "safe",
-    Moderate: "monitor",
-    High: "affected",
-    Critical: "evacuate",
+const fieldClass = "mt-1 min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary";
+const levelOptions = ["Evacuate", "Alert", "Monitor"];
+const initialForm = {
+    locationName: "",
+    level: "Monitor",
+    radiusMeters: "",
+    depthCm: "",
+    note: "",
+    source: "",
+    expiryHours: "6",
+    lat: null,
+    lng: null,
 };
 
-const selectClass = "min-h-10 rounded-lg border border-gray-300 px-2 text-xs";
+function formatPht(value) {
+    return new Intl.DateTimeFormat("en-PH", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Asia/Manila",
+    }).format(new Date(value));
+}
 
-const toLocalDateTime = (date) => {
-    if (!date) return "";
-    const local = new Date(date);
-    const offset = local.getTimezoneOffset() * 60000;
-    return new Date(local.getTime() - offset).toISOString().slice(0, 16);
-};
-
-const zoneToForm = (zone) => ({
-    title: zone.title,
-    type: zone.type,
-    severity: zone.severity,
-    description: zone.description,
-    latitude: zone.latitude,
-    longitude: zone.longitude,
-    radius: zone.radius,
-    radiusUnit: zone.radiusUnit,
-    status: zone.status,
-    expiresAt: toLocalDateTime(zone.expiresAt),
-    location: zone.location,
-});
-
-const radiusLabel = (zone) =>
-    `${zone.radius} ${zone.radiusUnit === "kilometers" ? "km" : "m"}`;
-
-const coordinateLabel = (zone) =>
-    `${Number(zone.latitude).toFixed(4)}, ${Number(zone.longitude).toFixed(4)}`;
+function levelStatus(level) {
+    return level.toLowerCase();
+}
 
 export default function AdminLocations() {
-    const [zones, setZones] = useState(mockHazardZones);
-    const [selectedZone, setSelectedZone] = useState(null);
-    const [form, setForm] = useState(null);
-    const [search, setSearch] = useState("");
-    const [typeFilter, setTypeFilter] = useState("All types");
-    const [severityFilter, setSeverityFilter] = useState("All severities");
-    const [statusFilter, setStatusFilter] = useState("All statuses");
-    const [showZones, setShowZones] = useState(true);
-    const [focusRequest, setFocusRequest] = useState(null);
-    const [resetRequest, setResetRequest] = useState(0);
-    const [confirmDelete, setConfirmDelete] = useState(null);
-    const [notice, setNotice] = useState("");
+    const { session } = useAuth();
+    const [reports, setReports] = useState([]);
+    const [form, setForm] = useState(initialForm);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [message, setMessage] = useState("");
+    const [error, setError] = useState("");
+    const [fieldErrors, setFieldErrors] = useState({});
 
-    const visibleZones = useMemo(() => {
-        const query = search.trim().toLowerCase();
-        return zones.filter((zone) => {
-            const matchesSearch =
-                !query ||
-                `${zone.title} ${zone.location}`.toLowerCase().includes(query);
-            return (
-                matchesSearch &&
-                (typeFilter === "All types" || zone.type === typeFilter) &&
-                (severityFilter === "All severities" ||
-                    zone.severity === severityFilter) &&
-                (statusFilter === "All statuses" ||
-                    zone.status === statusFilter)
-            );
-        });
-    }, [search, severityFilter, statusFilter, typeFilter, zones]);
-
-    const draftPoint =
-        form &&
-        Number.isFinite(Number(form.latitude)) &&
-        Number.isFinite(Number(form.longitude))
-            ? {
-                  latitude: Number(form.latitude),
-                  longitude: Number(form.longitude),
-              }
-            : null;
-
-    const draftZone =
-        draftPoint && form && Number(form.radius) > 0
-            ? {
-                  severity: form.severity,
-                  radius: Number(form.radius),
-                  radiusUnit: form.radiusUnit,
-              }
-            : null;
-
-    function selectZone(zone) {
-        setSelectedZone(zone);
-        setNotice("");
-        setFocusRequest({
-            id: zone.id,
-            latitude: zone.latitude,
-            longitude: zone.longitude,
-        });
+    async function loadReports() {
+        setLoading(true);
+        try {
+            setReports(await listFloodReports());
+            setError("");
+        } catch (loadError) {
+            console.error("Unable to load flood reports.", loadError);
+            setError(loadError.message);
+        } finally {
+            setLoading(false);
+        }
     }
 
-    function selectMapPoint(point) {
-        setSelectedZone(null);
-        setNotice("");
-        setForm((current) => ({
-            ...(current || defaultHazardZone),
-            latitude: point.latitude.toFixed(6),
-            longitude: point.longitude.toFixed(6),
-        }));
-    }
-
-    function startCreate() {
-        setSelectedZone(null);
-        setNotice("");
-        setForm({ ...defaultHazardZone });
-    }
-
-    function startEdit(zone) {
-        selectZone(zone);
-        setForm(zoneToForm(zone));
-    }
-
-    function clearPoint() {
-        setForm((current) =>
-            current ? { ...current, latitude: "", longitude: "" } : current,
-        );
-    }
+    useEffect(() => {
+        loadReports();
+        const timer = window.setInterval(loadReports, 60 * 1000);
+        return () => window.clearInterval(timer);
+    }, []);
 
     function updateForm(changes) {
         setForm((current) => ({ ...current, ...changes }));
     }
 
-    function saveZone(event) {
-        event.preventDefault();
-        if (!form || !draftPoint || Number(form.radius) <= 0) return;
-
-        const normalized = {
-            ...form,
-            latitude: Number(form.latitude),
-            longitude: Number(form.longitude),
-            radius: Number(form.radius),
-            expiresAt: form.expiresAt
-                ? new Date(form.expiresAt).toISOString()
-                : null,
-            location: form.location || "Selected map location",
-        };
-
-        if (selectedZone) {
-            const updated = { ...selectedZone, ...normalized };
-            setZones((current) =>
-                current.map((zone) =>
-                    zone.id === selectedZone.id ? updated : zone,
-                ),
-            );
-            setSelectedZone(updated);
-            setFocusRequest({
-                id: updated.id,
-                latitude: updated.latitude,
-                longitude: updated.longitude,
-            });
-            setNotice("Hazard zone updated in this frontend preview.");
-        } else {
-            const created = {
-                ...normalized,
-                id: `HZ-${Date.now()}`,
-                createdAt: new Date().toISOString(),
-            };
-            setZones((current) => [created, ...current]);
-            setSelectedZone(created);
-            setFocusRequest({
-                id: created.id,
-                latitude: created.latitude,
-                longitude: created.longitude,
-            });
-            setNotice("Hazard zone created in this frontend preview.");
+    function selectPoint(point) {
+        if (point instanceof Error) {
+            setError(point.message);
+            return;
         }
-        setForm(null);
+        updateForm(point);
+        setError("");
     }
 
-    function resolveZone(zone) {
-        const resolved = { ...zone, status: "Resolved" };
-        setZones((current) =>
-            current.map((item) => (item.id === zone.id ? resolved : item)),
-        );
-        setSelectedZone(resolved);
-        setNotice("Hazard zone marked as resolved in this frontend preview.");
+    async function submit(event) {
+        event.preventDefault();
+        setMessage("");
+        setError("");
+        setFieldErrors({});
+        if (form.lat === null || form.lng === null) {
+            setError("Choose a location on the map first.");
+            return;
+        }
+        setSaving(true);
+        try {
+            const expiresAt = new Date(
+                Date.now() + Number(form.expiryHours) * 60 * 60 * 1000,
+            ).toISOString();
+            await createFloodReport({
+                locationName: form.locationName,
+                level: form.level,
+                radiusMeters: form.radiusMeters,
+                depthCm: form.depthCm,
+                note: form.note,
+                source: form.source,
+                lat: form.lat,
+                lng: form.lng,
+                expiresAt,
+            }, session);
+            setForm(initialForm);
+            setMessage("Flood report entered.");
+            await loadReports();
+        } catch (saveError) {
+            console.error("Unable to enter flood report.", saveError);
+            setError(saveError.message);
+            setFieldErrors(saveError.fields || {});
+        } finally {
+            setSaving(false);
+        }
     }
 
-    function deleteZone() {
-        setZones((current) =>
-            current.filter((zone) => zone.id !== confirmDelete.id),
-        );
-        if (selectedZone?.id === confirmDelete.id) setSelectedZone(null);
-        if (form && selectedZone?.id === confirmDelete.id) setForm(null);
-        setConfirmDelete(null);
-        setNotice("Hazard zone deleted from this frontend preview.");
+    async function resolve(report) {
+        setMessage("");
+        setError("");
+        try {
+            await resolveFloodReport(report.id, session);
+            setMessage("Flood report resolved.");
+            await loadReports();
+        } catch (actionError) {
+            console.error("Unable to resolve flood report.", actionError);
+            setError(actionError.message);
+        }
+    }
+
+    async function remove(report) {
+        setMessage("");
+        setError("");
+        try {
+            await deleteFloodReport(report.id, session);
+            setMessage("Flood report deleted.");
+            await loadReports();
+        } catch (actionError) {
+            console.error("Unable to delete flood report.", actionError);
+            setError(actionError.message);
+        }
     }
 
     return (
         <section className="space-y-6">
             <AdminPageHeader
                 eyebrow="Admin / Overview"
-                title="Hazard monitoring"
-                description="Create radius-based hazard zones around Batangas City for operational review. Demonstration data only."
-                actions={
-                    <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800">
-                        Frontend preview
-                    </span>
-                }
+                title="Flood reports"
+                description="Enter and manage active administrator-confirmed flood reports."
+                onRefresh={loadReports}
+                refreshing={loading}
             />
 
-            {notice && (
-                <p
-                    role="status"
-                    className="rounded-lg border border-safe/30 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800"
-                >
-                    {notice}
-                </p>
-            )}
-
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(340px,0.8fr)]">
-                <SectionPanel
-                    title="Hazard zone map"
-                    description="Click the map to choose a center point. Circles show the configured affected radius."
-                    actions={
-                        <div className="flex flex-wrap gap-2">
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    setShowZones((current) => !current)
-                                }
-                                className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-bold text-secondary"
-                            >
-                                {showZones ? "Hide zones" : "Show zones"}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setResetRequest((current) => current + 1);
-                                    setSelectedZone(null);
-                                }}
-                                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-xs font-bold text-secondary"
-                            >
-                                <RotateCcw size={14} /> Reset view
-                            </button>
-                        </div>
-                    }
-                >
-                    <HazardMap
-                        zones={visibleZones}
-                        selectedZone={selectedZone}
-                        draftPoint={form ? draftPoint : null}
-                        draftZone={draftZone}
-                        showZones={showZones}
-                        onMapClick={selectMapPoint}
-                        onSelectZone={selectZone}
-                        focusRequest={focusRequest}
-                        resetRequest={resetRequest}
-                    />
-                </SectionPanel>
-
-                <div className="space-y-6">
-                    <SectionPanel
-                        title="Zone management"
-                        description="Search and filter the mock hazard zones."
-                    >
-                        <div className="space-y-3 p-5">
-                            <label className="relative block">
-                                <Search
-                                    size={16}
-                                    className="absolute left-3 top-3 text-text/45"
-                                />
-                                <input
-                                    value={search}
-                                    onChange={(event) =>
-                                        setSearch(event.target.value)
-                                    }
-                                    placeholder="Search hazard or location"
-                                    className="min-h-10 w-full rounded-lg border border-gray-300 pl-9 pr-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                                />
-                            </label>
-
-                            <div className="flex items-center gap-2 text-xs font-bold text-text/55">
-                                <Filter size={14} /> Filters
-                            </div>
-
-                            <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
-                                <select
-                                    value={typeFilter}
-                                    onChange={(event) =>
-                                        setTypeFilter(event.target.value)
-                                    }
-                                    className={selectClass}
-                                >
-                                    <option>All types</option>
-                                    {hazardTypes.map((type) => (
-                                        <option key={type}>{type}</option>
-                                    ))}
-                                </select>
-                                <select
-                                    value={severityFilter}
-                                    onChange={(event) =>
-                                        setSeverityFilter(event.target.value)
-                                    }
-                                    className={selectClass}
-                                >
-                                    <option>All severities</option>
-                                    {hazardSeverities.map((severity) => (
-                                        <option key={severity}>
-                                            {severity}
-                                        </option>
-                                    ))}
-                                </select>
-                                <select
-                                    value={statusFilter}
-                                    onChange={(event) =>
-                                        setStatusFilter(event.target.value)
-                                    }
-                                    className={selectClass}
-                                >
-                                    <option>All statuses</option>
-                                    {hazardStatuses.map((status) => (
-                                        <option key={status}>{status}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <button
-                                type="button"
-                                onClick={startCreate}
-                                className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-white hover:bg-primary-hover"
-                            >
-                                <CirclePlus size={17} /> Create hazard zone
-                            </button>
-                        </div>
-                    </SectionPanel>
-
-                    <div className="max-h-[520px] space-y-3 overflow-y-auto pr-1">
-                        {!visibleZones.length ? (
-                            <EmptyState
-                                icon={MapPin}
-                                title="No matching hazard zones"
-                                message="Try a different search or filter."
-                            />
-                        ) : (
-                            visibleZones.map((zone) => (
-                                <button
-                                    key={zone.id}
-                                    type="button"
-                                    onClick={() => selectZone(zone)}
-                                    className={`w-full rounded-xl bg-white p-4 text-left shadow-card transition hover:shadow-elevated focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                                        selectedZone?.id === zone.id
-                                            ? "ring-2 ring-primary"
-                                            : ""
-                                    }`}
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
-                                            <p className="truncate font-extrabold text-secondary">
-                                                {zone.title}
-                                            </p>
-                                            <p className="mt-1 truncate text-xs text-text/55">
-                                                {zone.type} · {zone.location}
-                                            </p>
-                                        </div>
-                                        <StatusPill
-                                            status={
-                                                severityStatusStyles[
-                                                    zone.severity
-                                                ]
-                                            }
-                                        />
-                                    </div>
-                                    <div className="mt-3 flex items-center justify-between text-xs text-text/60">
-                                        <span>{radiusLabel(zone)} radius</span>
-                                        <span className="capitalize">
-                                            {zone.status}
-                                        </span>
-                                    </div>
-                                </button>
-                            ))
-                        )}
-                    </div>
+            {message && <p role="status" className="rounded-lg border border-safe/30 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800">{message}</p>}
+            {error && (
+                <div role="alert" className="rounded-lg border border-risk-high/30 bg-red-50 px-4 py-3 text-sm font-semibold text-risk-high">
+                    <p>{error}</p>
+                    {Object.entries(fieldErrors).length > 0 && (
+                        <ul className="mt-2 list-inside list-disc font-normal">
+                            {Object.entries(fieldErrors).map(([field, messageForField]) => (
+                                <li key={field}>{field}: {messageForField}</li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
-            </div>
-
-            {form && (
-                <SectionPanel title="" className="p-5">
-                    <HazardZoneForm
-                        value={form}
-                        editing={Boolean(selectedZone)}
-                        saving={false}
-                        onChange={updateForm}
-                        onSubmit={saveZone}
-                        onCancel={() => setForm(null)}
-                        onClearPoint={clearPoint}
-                    />
-                </SectionPanel>
             )}
 
-            {selectedZone && !form && (
-                <SectionPanel
-                    title="Selected hazard zone"
-                    description="Click Edit to adjust the center, radius, or hazard details."
-                    actions={
-                        <button
-                            type="button"
-                            onClick={() => setSelectedZone(null)}
-                            className="text-xs font-bold text-text/55"
-                        >
-                            Clear selection
+            <form onSubmit={submit} className="rounded-xl bg-white p-5 shadow-card">
+                <h2 className="text-lg font-extrabold text-secondary">Enter flood report</h2>
+                <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <label className="text-xs font-bold text-text/70">
+                            Location name
+                            <input required maxLength={160} value={form.locationName} onChange={(event) => updateForm({ locationName: event.target.value })} className={fieldClass} aria-invalid={Boolean(fieldErrors.locationName)} />
+                        </label>
+                        <label className="text-xs font-bold text-text/70">
+                            Level
+                            <select value={form.level} onChange={(event) => updateForm({ level: event.target.value })} className={fieldClass}>
+                                {levelOptions.map((level) => <option key={level}>{level}</option>)}
+                            </select>
+                        </label>
+                        <label className="text-xs font-bold text-text/70">
+                            Radius (meters)
+                            <input required type="number" min="50" max="5000" step="1" value={form.radiusMeters} onChange={(event) => updateForm({ radiusMeters: event.target.value })} className={fieldClass} aria-invalid={Boolean(fieldErrors.radiusMeters)} />
+                        </label>
+                        <label className="text-xs font-bold text-text/70">
+                            Depth (cm, optional)
+                            <input type="number" min="0" max="1000" step="1" value={form.depthCm} onChange={(event) => updateForm({ depthCm: event.target.value })} className={fieldClass} aria-invalid={Boolean(fieldErrors.depthCm)} />
+                        </label>
+                        <label className="text-xs font-bold text-text/70">
+                            Source
+                            <input required maxLength={160} value={form.source} onChange={(event) => updateForm({ source: event.target.value })} className={fieldClass} />
+                        </label>
+                        <label className="text-xs font-bold text-text/70">
+                            Expires in
+                            <select value={form.expiryHours} onChange={(event) => updateForm({ expiryHours: event.target.value })} className={fieldClass}>
+                                <option value="1">1 hour</option>
+                                <option value="6">6 hours</option>
+                                <option value="12">12 hours</option>
+                                <option value="24">24 hours</option>
+                            </select>
+                        </label>
+                        <label className="text-xs font-bold text-text/70 sm:col-span-2">
+                            Note
+                            <textarea maxLength={1000} rows="3" value={form.note} onChange={(event) => updateForm({ note: event.target.value })} className={fieldClass} />
+                        </label>
+                        <button type="submit" disabled={saving} className="min-h-11 rounded-lg bg-primary px-4 text-sm font-bold text-white disabled:opacity-60 sm:col-span-2">
+                            {saving ? "Saving..." : "Enter flood report"}
                         </button>
-                    }
-                >
-                    <div className="grid gap-5 p-5 lg:grid-cols-[1fr_auto]">
-                        <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <h2 className="text-xl font-extrabold text-secondary">
-                                    {selectedZone.title}
-                                </h2>
-                                <StatusPill
-                                    status={
-                                        severityStatusStyles[
-                                            selectedZone.severity
-                                        ]
-                                    }
-                                />
-                                <StatusPill
-                                    status={selectedZone.status.toLowerCase()}
-                                />
-                            </div>
-                            <p className="mt-2 text-sm text-text/70">
-                                {selectedZone.description}
-                            </p>
-                            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                                <div>
-                                    <dt className="text-xs text-text/50">
-                                        Hazard type
-                                    </dt>
-                                    <dd className="font-bold text-secondary">
-                                        {selectedZone.type}
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="text-xs text-text/50">
-                                        Affected radius
-                                    </dt>
-                                    <dd className="font-bold text-secondary">
-                                        {radiusLabel(selectedZone)}
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="text-xs text-text/50">
-                                        Center coordinates
-                                    </dt>
-                                    <dd className="font-mono text-xs font-bold text-secondary">
-                                        {coordinateLabel(selectedZone)}
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="text-xs text-text/50">
-                                        Expiration
-                                    </dt>
-                                    <dd className="font-bold text-secondary">
-                                        {selectedZone.expiresAt
-                                            ? new Date(
-                                                  selectedZone.expiresAt,
-                                              ).toLocaleString()
-                                            : "Not set"}
-                                    </dd>
-                                </div>
-                            </dl>
-                        </div>
-
-                        <div className="flex flex-wrap items-start gap-2 lg:flex-col">
-                            <button
-                                type="button"
-                                onClick={() => startEdit(selectedZone)}
-                                className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-primary px-3 text-xs font-bold text-primary"
-                            >
-                                <Pencil size={14} /> Edit
-                            </button>
-                            {selectedZone.status === "Active" && (
-                                <button
-                                    type="button"
-                                    onClick={() => resolveZone(selectedZone)}
-                                    className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-safe px-3 text-xs font-bold text-safe"
-                                >
-                                    <Crosshair size={14} /> Resolve
-                                </button>
-                            )}
-                            <button
-                                type="button"
-                                onClick={() => setConfirmDelete(selectedZone)}
-                                className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-risk-high px-3 text-xs font-bold text-risk-high"
-                            >
-                                <Trash2 size={14} /> Delete
-                            </button>
-                        </div>
                     </div>
-                </SectionPanel>
-            )}
+                    <FloodReportEntryMap
+                        latitude={form.lat}
+                        longitude={form.lng}
+                        level={form.level}
+                        radiusMeters={form.radiusMeters}
+                        onSelect={selectPoint}
+                    />
+                </div>
+            </form>
 
-            <ConfirmDialog
-                open={Boolean(confirmDelete)}
-                title="Delete hazard zone"
-                message={`Delete ${confirmDelete?.title}? This will remove it from the frontend preview.`}
-                onCancel={() => setConfirmDelete(null)}
-                onConfirm={deleteZone}
-            />
+            <section className="rounded-xl bg-white p-5 shadow-card">
+                <h2 className="text-lg font-extrabold text-secondary">Active flood reports</h2>
+                <div className="mt-4 space-y-3">
+                    {!loading && !reports.length && <EmptyState message="No active flood reports" />}
+                    {reports.map((report) => (
+                        <article key={report.id} className="rounded-lg border border-gray-200 p-4">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <h3 className="font-extrabold text-secondary">{report.locationName}</h3>
+                                    <p className="mt-1 text-xs text-text/60">{report.source} · Entered {formatPht(report.createdAt)} PHT</p>
+                                </div>
+                                <StatusPill status={levelStatus(report.level)} />
+                            </div>
+                            <p className="mt-3 text-sm text-text/75">{report.note || "No note provided."}</p>
+                            <p className="mt-2 text-xs text-text/55">Expires {formatPht(report.expiresAt)} PHT · Radius {report.radiusMeters} m{report.depthCm === undefined ? "" : ` · Depth ${report.depthCm} cm`}</p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                <button type="button" onClick={() => resolve(report)} className="min-h-10 rounded-lg border border-safe px-3 text-xs font-bold text-safe">Resolve</button>
+                                <button type="button" onClick={() => remove(report)} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-risk-high px-3 text-xs font-bold text-risk-high"><Trash2 size={14} /> Delete</button>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            </section>
         </section>
     );
 }

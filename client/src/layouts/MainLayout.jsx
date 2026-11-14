@@ -18,7 +18,7 @@ function MainLayout(){
             
             <Footer />
 
-            {isChatbotOpen && <ChatbotWindow />}
+            <ChatbotWindow isOpen={isChatbotOpen} />
 
             <ChatbotButton onClick={() => setIsChatbotOpen(!isChatbotOpen)}
             isOpen={isChatbotOpen} />

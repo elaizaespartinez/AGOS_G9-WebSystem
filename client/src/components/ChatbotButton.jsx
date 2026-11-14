@@ -22,6 +22,7 @@ function ChatbotButton({ onClick, isOpen }) {
                 py-1
                 text-text
                 shadow-elevated
+                chatbot-toggle
             "
         >
             <img

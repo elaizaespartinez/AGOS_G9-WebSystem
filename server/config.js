@@ -22,5 +22,8 @@ export function loadConfig(env = process.env) {
         port: Number(env.PORT) || 3001,
         corsOrigin: env.CORS_ORIGIN || "http://localhost:5173",
         providerTimeoutMs: Number(env.PROVIDER_TIMEOUT_MS) || 8000,
+        supabaseUrl: env.SUPABASE_URL?.trim().replace(/\/$/, ""),
+        supabaseKey: (env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_ROLE_KEY)?.trim(),
+        supabaseServiceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
     };
 }
