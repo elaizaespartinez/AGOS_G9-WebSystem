@@ -6,6 +6,10 @@ import { listActiveFloodReports, readFloodReports, writeFloodReports } from "./f
 
 const config = loadConfig();
 const MAX_BODY_LENGTH = 100000;
+const MAX_CHAT_MESSAGE_LENGTH = 500;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 20;
+const rateLimitBuckets = new Map();
 const FLOOD_LEVELS = ["Evacuate", "Alert", "Monitor"];
 const BATANGAS_BOUNDS = {
     minLat: 13.60,
@@ -27,6 +31,28 @@ function sendJson(response, status, body) {
         "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
     });
     response.end(JSON.stringify(body));
+}
+
+function getClientIp(request) {
+    return (request.headers["x-forwarded-for"] || request.socket.remoteAddress || "unknown")
+        .split(",")[0]
+        .trim();
+}
+
+function enforceChatRateLimit(request) {
+    const now = Date.now();
+    const clientIp = getClientIp(request);
+    const recentRequests = (rateLimitBuckets.get(clientIp) || [])
+        .filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS);
+
+    if (recentRequests.length >= RATE_LIMIT_MAX_REQUESTS) {
+        const error = new Error("Too many chat requests. Please try again in a minute.");
+        error.status = 429;
+        throw error;
+    }
+
+    recentRequests.push(now);
+    rateLimitBuckets.set(clientIp, recentRequests);
 }
 
 async function readBody(request) {
@@ -234,14 +260,30 @@ const server = createServer(async (request, response) => {
 
     try {
         const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
+        if (request.method === "GET" && ["/health", "/healthz"].includes(url.pathname)) {
+            sendJson(response, 200, { status: "ok" });
+            return;
+        }
         if (await handleFloodReportRequest(request, response, url)) return;
         if (request.method !== "POST" || url.pathname !== "/api/chat") {
             sendJson(response, 404, { error: "Not found" });
             return;
         }
+        enforceChatRateLimit(request);
         const body = await readBody(request);
-        const result = await getChatReply(body.messages);
-        sendJson(response, 200, result);
+        if (typeof body.message !== "string" || !body.message.trim()) {
+            sendJson(response, 400, { error: "A message is required." });
+            return;
+        }
+        const message = body.message.trim();
+        if (message.length > MAX_CHAT_MESSAGE_LENGTH) {
+            sendJson(response, 400, {
+                error: `Message must be ${MAX_CHAT_MESSAGE_LENGTH} characters or fewer.`,
+            });
+            return;
+        }
+        const result = await getChatReply([{ role: "user", content: message }]);
+        sendJson(response, 200, { reply: result.reply });
     } catch (error) {
         sendJson(response, error.status || 400, {
             error: error.message || "Invalid request.",

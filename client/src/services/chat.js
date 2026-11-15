@@ -1,11 +1,19 @@
+import { API_URL } from "../config/api";
+
 const OFFLINE_REPLY = "I can help with floods, typhoons, earthquakes, landslides, fires, and disaster preparedness. Follow official advisories from PAGASA, PHIVOLCS, NDRRMC, and your LGU or barangay DRRM office. For urgent danger, call local emergency services first.";
 
-export async function askChat(messages) {
+export async function askChat(message) {
     try {
-        const response = await fetch("/api/chat", {
+        if (API_URL === "REPLACE_WITH_RENDER_URL") {
+            throw new Error("Set API_URL in client/src/config/api.js to the deployed Render URL.");
+        }
+        const response = await fetch(`${API_URL}/api/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ messages }),
+            body: JSON.stringify({
+                message,
+                messages: [{ role: "user", content: message }],
+            }),
         });
         const data = await response.json().catch(() => ({}));
 

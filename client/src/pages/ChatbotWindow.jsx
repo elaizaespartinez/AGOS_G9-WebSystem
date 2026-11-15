@@ -99,7 +99,7 @@ function ChatbotWindow({ isOpen }) {
         setIsLoading(true);
 
         try {
-            const result = await askChat(conversation);
+            const result = await askChat(text);
             setMessages((currentMessages) => [
                 ...currentMessages,
                 { role: "assistant", content: result.reply, provider: result.provider, timestamp: new Date() },
