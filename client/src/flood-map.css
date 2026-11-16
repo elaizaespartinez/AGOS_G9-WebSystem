@@ -1,3 +1,94 @@
+.leaflet-top.leaflet-left {
+    top: 12px;
+    left: 12px;
+}
+.leaflet-top.leaflet-right {
+    top: 12px;
+    right: 12px;
+}
+.leaflet-bottom.leaflet-left {
+    bottom: 12px;
+    left: 12px;
+}
+.leaflet-bottom.leaflet-right {
+    right: 12px;
+    bottom: 12px;
+}
+.leaflet-control-zoom,
+.leaflet-control-layers {
+    overflow: hidden;
+    border: 0 !important;
+    border-radius: .75rem;
+    box-shadow: var(--shadow-card) !important;
+}
+.leaflet-control-zoom a,
+.leaflet-control-layers-toggle {
+    background: rgb(255 255 255 / 90%);
+    backdrop-filter: blur(8px);
+}
+.leaflet-control-layers-expanded {
+    padding: .5rem;
+    border-radius: .75rem;
+    background: rgb(255 255 255 / 95%);
+    box-shadow: var(--shadow-card) !important;
+}
+.leaflet-control-layers-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: auto !important;
+    height: auto !important;
+    min-width: 4.25rem;
+    border-radius: 999px;
+    background-image: none !important;
+    color: #334155;
+    font-size: .75rem;
+    font-weight: 700;
+    line-height: 1.25rem;
+    padding: .35rem .75rem;
+}
+.leaflet-popup-pane { z-index: 700; }
+.leaflet-marker-pane { z-index: 600; }
+.leaflet-overlay-pane { z-index: 400; }
+.flood-map-date-control {
+    top: 5rem !important;
+    left: .75rem !important;
+    margin: 0;
+    border-radius: 999px !important;
+    background: rgb(255 255 255 / 90%) !important;
+    backdrop-filter: blur(8px);
+    box-shadow: var(--shadow-card) !important;
+    padding: .35rem .65rem !important;
+}
+.flood-map-date-control label { font-weight: 600; }
+.flood-map-date-control input {
+    border: 0;
+    background: transparent;
+    padding: 0;
+}
+.flood-map-radar-toggle {
+    top: 3.75rem;
+    border-radius: 999px !important;
+    background: rgb(255 255 255 / 90%) !important;
+    backdrop-filter: blur(8px);
+}
+.flood-map-risk-card {
+    bottom: 3.75rem;
+    max-width: min(22rem, calc(100% - 1.5rem));
+}
+.flood-map-noah-card {
+    bottom: 6.75rem;
+    max-width: min(28rem, calc(100% - 1.5rem));
+}
+.flood-map-satellite-note {
+    bottom: 3.75rem;
+}
+.flood-map-error {
+    top: 5.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
 .flood-weather-card {
     border-radius: .75rem;
     background: var(--color-card);
@@ -57,8 +148,8 @@
 .flood-weather-marker {
     display: grid;
     place-items: center;
-    width: 26px !important;
-    height: 26px !important;
+    width: 28px !important;
+    height: 28px !important;
     border: 2px solid white;
     border-radius: 999px;
     background: #2e9eac;
@@ -81,8 +172,8 @@
 .flood-report-marker {
     display: grid;
     place-items: center;
-    width: 24px !important;
-    height: 24px !important;
+    width: 28px !important;
+    height: 28px !important;
     border: 2px solid white;
     border-radius: 999px;
     color: white;
@@ -111,4 +202,15 @@
 @media (max-width: 639px) {
     .flood-weather-grid { gap: .4rem; }
     .flood-weather-grid strong { font-size: .8rem; }
+    .flood-map-date-control {
+        max-width: calc(100% - 7rem);
+    }
+    .flood-map-date-control input {
+        max-width: 7rem;
+    }
+    .flood-map-risk-card,
+    .flood-map-noah-card,
+    .flood-map-satellite-note {
+        max-width: calc(100% - 1.5rem);
+    }
 }

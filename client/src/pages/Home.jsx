@@ -12,9 +12,13 @@ import {
 import { getHomeDashboard } from "../services/homeService";
 import { subscribeToPublicCommunications } from "../services/publicCommunicationsService";
 
+let cachedHomeData = null;
+
 function Home() {
-    const [homeData, setHomeData] = useState(defaultHomeData);
-    const [isLoading, setIsLoading] = useState(true);
+    const [homeData, setHomeData] = useState(
+        cachedHomeData ?? defaultHomeData,
+    );
+    const [isLoading, setIsLoading] = useState(!cachedHomeData);
     const [hasLoadError, setHasLoadError] = useState(false);
 
     useEffect(() => {
@@ -28,7 +32,7 @@ function Home() {
                 const dashboard =
                     data && typeof data === "object" ? data : {};
 
-                setHomeData({
+                const merged = {
                     ...defaultHomeData,
                     ...dashboard,
                     weather: {
@@ -46,7 +50,10 @@ function Home() {
                     hotlines: Array.isArray(dashboard.hotlines)
                         ? dashboard.hotlines
                         : defaultHomeData.hotlines,
-                });
+                };
+
+                cachedHomeData = merged;
+                setHomeData(merged);
             })
             .catch((error) => {
                 if (!isMounted) return;

@@ -4,7 +4,8 @@ import {
     listPublicCommunications,
     subscribeToPublicCommunications,
 } from "./publicCommunicationsService";
-import { getHomeWeather } from "./weatherService";
+import { getHomeWeather, getWeather } from "./weatherService";
+import { getFloodRiskLevel } from "../lib/floodRisk";
 
 const mapHotlineNumbers = (hotline) => {
     const value = hotline.number ?? hotline.numbers ?? "";
@@ -41,10 +42,18 @@ const getHotlines = async () => {
 };
 
 const getHomeDashboard = async () => {
-    const [weatherResult, hotlinesResult] = await Promise.allSettled([
-        getHomeWeather(),
-        getHotlines(),
-    ]);
+    const [
+        weatherResult,
+        hotlinesResult,
+        communicationsResult,
+        floodWeatherResult,
+    ] =
+        await Promise.allSettled([
+            getHomeWeather(),
+            getHotlines(),
+            listPublicCommunications(),
+            getWeather(),
+        ]);
 
     if (
         weatherResult.status === "rejected" &&
@@ -53,8 +62,15 @@ const getHomeDashboard = async () => {
         throw new Error("Unable to load weather and hotline data.");
     }
 
-    const { alerts } = await listPublicCommunications();
-    const alert = alerts[0];
+    const alert =
+        communicationsResult.status === "fulfilled"
+            ? communicationsResult.value.alerts[0]
+            : null;
+
+    const floodRisk =
+        floodWeatherResult.status === "fulfilled"
+            ? getFloodRiskLevel(floodWeatherResult.value)
+            : null;
 
     return {
         ...mockHomeData,
@@ -66,25 +82,33 @@ const getHomeDashboard = async () => {
             hotlinesResult.status === "fulfilled"
                 ? hotlinesResult.value
                 : [],
-        ...(alert
+        floodStatus:
+            floodRisk
+                ? {
+                      risk: floodRisk,
+                      level: `${floodRisk.replace(/^./, (letter) => letter.toUpperCase())} Risk`,
+                      location: "Batangas City",
+                      updatedAt: floodWeatherResult.value.lastUpdated.toLocaleString(),
+                      source: "Open-Meteo rainfall estimate",
+                  }
+                : mockHomeData.floodStatus,
+        activeAlert: alert
             ? {
-                  activeAlert: {
-                      title: alert.title,
-                      description: alert.description,
-                      type: "rainfall",
-                      severity:
-                          alert.severity === "safe"
-                              ? "safe"
-                              : alert.severity === "monitor"
-                                ? "moderate"
-                                : "high",
-                      updatedAt: alert.startsAt
-                          ? new Date(alert.startsAt).toLocaleString()
-                          : "Just now",
-                      source: alert.source,
-                  },
+                  title: alert.title,
+                  description: alert.description,
+                  type: "rainfall",
+                  severity:
+                      alert.severity === "safe"
+                          ? "safe"
+                          : alert.severity === "monitor"
+                            ? "moderate"
+                            : "high",
+                  updatedAt: alert.startsAt
+                      ? new Date(alert.startsAt).toLocaleString()
+                      : "Just now",
+                  source: alert.source,
               }
-            : {}),
+            : mockHomeData.activeAlert,
     };
 };
 

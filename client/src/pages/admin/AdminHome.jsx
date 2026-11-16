@@ -17,6 +17,7 @@ import EmptyState from "../../components/admin/EmptyState";
 import ErrorState from "../../components/admin/ErrorState";
 import LoadingState from "../../components/admin/LoadingState";
 import SectionPanel from "../../components/admin/SectionPanel";
+import HazardOverviewMap from "../../components/admin/HazardOverviewMap";
 
 const riskClasses = {
     safe: "bg-green-100 text-green-800",
@@ -30,13 +31,6 @@ const dotClasses = {
     affected: "bg-risk-moderate",
     evacuate: "bg-risk-high",
 };
-const markerColors = {
-    safe: "bg-safe",
-    monitor: "bg-risk-low",
-    affected: "bg-risk-moderate",
-    evacuate: "bg-risk-high",
-};
-
 const actionLabels = {
     report_pending: "Report submitted",
     report_verified: "Report verified",
@@ -58,15 +52,6 @@ function getActivityDetail(activity) {
 function formatAction(action) {
     const label = actionLabels[action] || action || "Administrative action";
     return label.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function getMarkerStyle(latitude, longitude) {
-    const lat = Number(latitude);
-    const lng = Number(longitude);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    const left = Math.max(4, Math.min(92, ((lng - 120.95) / 0.2) * 100));
-    const top = Math.max(8, Math.min(86, (1 - (lat - 13.70) / 0.15) * 100));
-    return { left: `${left}%`, top: `${top}%` };
 }
 
 export default function AdminHome() {
@@ -138,9 +123,16 @@ export default function AdminHome() {
             "/admin/settings",
         ],
     ];
-    const markerConditions = conditions
-        .map((condition) => ({ ...condition, style: getMarkerStyle(condition.latitude, condition.longitude) }))
-        .filter((condition) => condition.style);
+    const hasMappedConditions = conditions.some((condition) =>
+        condition.latitude !== null &&
+        condition.latitude !== undefined &&
+        String(condition.latitude).trim() !== "" &&
+        condition.longitude !== null &&
+        condition.longitude !== undefined &&
+        String(condition.longitude).trim() !== "" &&
+        Number.isFinite(Number(condition.latitude)) &&
+        Number.isFinite(Number(condition.longitude)),
+    );
 
     return (
         <section className="space-y-6">
@@ -200,16 +192,8 @@ export default function AdminHome() {
                     description="Preview of flood conditions with available coordinates."
                     actions={<Link to="/admin/locations?view=hazards" className="text-xs font-bold text-primary">View monitoring <ArrowUpRight size={13} className="ml-1 inline" /></Link>}
                 >
-                    {markerConditions.length ? (
-                        <div className="relative min-h-[310px] overflow-hidden bg-[#dcecef] p-5">
-                            <div className="absolute inset-0 opacity-50 [background-image:linear-gradient(30deg,transparent_45%,rgba(46,158,172,.15)_46%,transparent_48%),linear-gradient(150deg,transparent_45%,rgba(27,28,104,.1)_46%,transparent_48%)] [background-size:80px_80px]" />
-                            {markerConditions.map((condition) => (
-                                <span key={condition.id} style={condition.style} className="absolute z-10 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full bg-white px-2 py-1 text-[10px] font-bold text-secondary shadow-card">
-                                    <span className={`h-2 w-2 rounded-full ${markerColors[condition.severity] || "bg-text/40"}`} />
-                                    {condition.barangays?.name || condition.barangay_id}
-                                </span>
-                            ))}
-                        </div>
+                    {hasMappedConditions ? (
+                        <HazardOverviewMap conditions={conditions} />
                     ) : (
                         <div className="p-5"><EmptyState title="No mapped conditions" message="No flood-condition records include usable coordinates." /></div>
                     )}

@@ -84,7 +84,7 @@ const getHomeWeather = async () => {
 };
 
 const WEATHER_ENDPOINT_FOR_MAP =
-    "https://api.open-meteo.com/v1/forecast?latitude=13.7565&longitude=121.0583&hourly=precipitation&past_hours=1&forecast_hours=3&timezone=Asia%2FManila";
+    "https://api.open-meteo.com/v1/forecast?latitude=13.7565&longitude=121.0583&hourly=precipitation&past_hours=24&forecast_hours=6&timezone=Asia%2FManila";
 
 export async function getWeather() {
     const response = await fetch(WEATHER_ENDPOINT_FOR_MAP);
@@ -98,10 +98,15 @@ export async function getWeather() {
 
     const rainfall = precipitation.map(Number).filter(Number.isFinite);
     if (rainfall.length === 0) throw new Error("Open-Meteo returned invalid precipitation data.");
+    const pastRainfall = precipitation
+        .slice(0, 24)
+        .map(Number)
+        .filter(Number.isFinite);
 
     return {
         lat: 13.7565,
         lng: 121.0583,
+        total24h: pastRainfall.reduce((total, value) => total + value, 0),
         peakRainfall: Math.max(...rainfall),
         lastUpdated: new Date(),
     };

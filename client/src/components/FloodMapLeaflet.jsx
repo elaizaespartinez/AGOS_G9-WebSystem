@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { floodMapConfig, getHazardStyle } from "../config/mapConfig";
+import { getFloodRiskLevel } from "../lib/floodRisk";
+import { getWeather } from "../services/weatherService";
+import { floodMapConfig } from "../config/mapConfig";
 
-const NOAH_LABEL = "Flood hazard (static scenario, not current)";
+const NOAH_LABEL = "Flood-prone areas (NOAH)";
 const GFM_WMS_URL = "https://geoserver.gfm.eodc.eu/geoserver/gfm/wms";
 const GFM_CAPABILITIES_URL = `${GFM_WMS_URL}?service=WMS&request=GetCapabilities`;
+const hazardStyles = {
+    low: { color: "#ca8a04", fillColor: "#facc15" },
+    medium: { color: "#ea580c", fillColor: "#f97316" },
+    high: { color: "#991b1b", fillColor: "#991b1b" },
+};
 
 function getLayerText(layer, tagName) {
     return layer.getElementsByTagNameNS("*", tagName)[0]?.textContent?.trim() || "";
@@ -79,6 +86,32 @@ function formatWeatherPopup(weather) {
     return `<strong>Batangas City</strong><br>${rainfall}`;
 }
 
+function getHazardStyle(feature, risk) {
+    const level = String(feature?.properties?.hazard_level || "low").toLowerCase();
+    const style = hazardStyles[level] || hazardStyles.low;
+    const fillOpacity = {
+        safe: 0.25,
+        low: 0.4,
+        moderate: 0.5,
+        high: 0.6,
+    }[risk] || 0.25;
+    return {
+        ...style,
+        fillOpacity,
+        opacity: level === "high" ? 0.95 : 0.8,
+        weight: 1,
+    };
+}
+
+function formatWeatherUpdatedAt(value) {
+    if (!value) return "unknown time";
+    return new Intl.DateTimeFormat("en-PH", {
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: "Asia/Manila",
+    }).format(new Date(value));
+}
+
 function FloodMapLeaflet({
     weatherData = [],
     facilityData = [],
@@ -98,12 +131,53 @@ function FloodMapLeaflet({
     const gfmLayer = useRef(null);
     const gfmMetadata = useRef(null);
     const gfmTileLoaded = useRef(false);
+    const hazardLayerRef = useRef(null);
+    const hazardDataRef = useRef(null);
+    const hazardLoading = useRef(false);
     const [mapError, setMapError] = useState("");
     const [radarVisible, setRadarVisible] = useState(true);
     const [noahVisible, setNoahVisible] = useState(false);
+    const [noahStatus, setNoahStatus] = useState("idle");
     const [gfmDate, setGfmDate] = useState("");
     const [gfmRange, setGfmRange] = useState({ min: "", max: "" });
     const [gfmStatus, setGfmStatus] = useState("loading");
+    const [currentWeather, setCurrentWeather] = useState(weatherData[0] || null);
+    const estimatedRisk = getFloodRiskLevel(currentWeather || {});
+    const estimatedRiskRef = useRef(estimatedRisk);
+    estimatedRiskRef.current = estimatedRisk;
+
+    useEffect(() => {
+        setCurrentWeather(weatherData[0] || null);
+    }, [weatherData]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function refreshWeather() {
+            try {
+                const nextWeather = await getWeather();
+                if (!cancelled) setCurrentWeather(nextWeather);
+            } catch (error) {
+                if (!cancelled) console.error("Unable to refresh flood map weather.", error);
+            }
+        }
+
+        refreshWeather();
+        const weatherInterval = window.setInterval(refreshWeather, 10 * 60 * 1000);
+        return () => {
+            cancelled = true;
+            window.clearInterval(weatherInterval);
+        };
+    }, []);
+
+    useEffect(() => {
+        const layer = hazardLayerRef.current;
+        const data = hazardDataRef.current;
+        if (!layer || !data || !mapInstance.current?.hasLayer(layer)) return;
+
+        layer.clearLayers();
+        layer.addData(data);
+    }, [estimatedRisk]);
 
     useEffect(() => {
         if (!mapElement.current) return undefined;
@@ -124,38 +198,67 @@ function FloodMapLeaflet({
             minZoom: floodMapConfig.minZoom,
             maxZoom: floodMapConfig.maxZoom,
         }).addTo(map);
+        const noahPane = map.createPane("noahHazards");
+        noahPane.style.zIndex = "450";
         const hazardLayer = L.geoJSON(null, {
-            style: getHazardStyle,
+            pane: "noahHazards",
+            style: (feature) => getHazardStyle(feature, estimatedRiskRef.current),
             onEachFeature: (feature, layer) => {
                 const properties = feature.properties || {};
                 const hazardLevel = String(properties.hazard_level || "Unknown");
                 layer.bindPopup(
-                    `<strong>Hazard Level: ${hazardLevel}</strong><br>Original Var: ${properties.Var ?? "Unknown"}<br>Return Period: 25 Years<br>Data Source: Project NOAH`,
+                    `<strong>Flood susceptibility: ${hazardLevel} · 25-year return period · Source: Project NOAH</strong>`,
                 );
             },
         });
+        hazardLayerRef.current = hazardLayer;
         const layerControl = L.control.layers(null, { [NOAH_LABEL]: hazardLayer }, { position: "topright" }).addTo(map);
-        const handleNoahAdd = ({ layer }) => {
-            if (layer !== hazardLayer) return;
-            setNoahVisible(true);
-            onNoahVisibilityChange?.(true);
-            if (noahLoaded.current) return;
+        const layerToggle = layerControl.getContainer().querySelector(".leaflet-control-layers-toggle");
+        if (layerToggle) {
+            layerToggle.textContent = "Layers";
+            layerToggle.setAttribute("aria-label", "Layers");
+        }
+        const renderNoahHazards = () => {
+            if (!map.hasLayer(hazardLayer) || !hazardDataRef.current) return;
+            hazardLayer.clearLayers();
+            hazardLayer.addData(hazardDataRef.current);
+        };
+        const loadNoahHazards = () => {
+            if (noahLoaded.current) {
+                renderNoahHazards();
+                return;
+            }
+            if (hazardLoading.current) return;
+            setNoahStatus("loading");
+            hazardLoading.current = true;
             fetch(floodMapConfig.hazardDataPath)
                 .then((response) => {
                     if (!response.ok) throw new Error(`Flood hazard request failed with status ${response.status}.`);
                     return response.json();
                 })
                 .then((data) => {
-                    hazardLayer.addData(data);
+                    hazardDataRef.current = data;
                     noahLoaded.current = true;
+                    renderNoahHazards();
+                    setNoahStatus("loaded");
                 })
                 .catch((error) => {
                     console.error("Unable to load flood hazard data.", error);
                     map.removeLayer(hazardLayer);
                     setNoahVisible(false);
                     onNoahVisibilityChange?.(false);
-                    setMapError("Static NOAH flood hazard data is unavailable.");
+                    setNoahStatus("error");
+                    setMapError("Project NOAH flood hazard data is unavailable.");
+                })
+                .finally(() => {
+                    hazardLoading.current = false;
                 });
+        };
+        const handleNoahAdd = ({ layer }) => {
+            if (layer !== hazardLayer) return;
+            setNoahVisible(true);
+            onNoahVisibilityChange?.(true);
+            loadNoahHazards();
         };
         const handleNoahRemove = ({ layer }) => {
             if (layer !== hazardLayer) return;
@@ -288,6 +391,8 @@ function FloodMapLeaflet({
             radarLayer.current = null;
             gfmLayer.current?.remove();
             gfmLayer.current = null;
+            hazardLayerRef.current = null;
+            hazardDataRef.current = null;
             layerControl.remove();
             facilityMarkers.current.forEach((marker) => marker.remove());
             facilityMarkers.current = [];
@@ -320,10 +425,10 @@ function FloodMapLeaflet({
             iconSize: [26, 26],
             iconAnchor: [13, 13],
         });
-        weatherMarkers.current = weatherData.map((weather) => L.marker([weather.lat, weather.lng], { icon: weatherIcon })
+        weatherMarkers.current = (currentWeather ? [currentWeather] : []).map((weather) => L.marker([weather.lat, weather.lng], { icon: weatherIcon })
             .addTo(mapInstance.current)
             .bindPopup(formatWeatherPopup(weather)));
-    }, [weatherData]);
+    }, [currentWeather]);
 
     useEffect(() => {
         if (!mapInstance.current) return;
@@ -337,10 +442,11 @@ function FloodMapLeaflet({
         reportMarkers.current = floodReports.map((report) => {
             const icon = L.divIcon({
                 className: `flood-report-marker flood-report-marker--${report.level.toLowerCase()}`,
-                iconSize: [24, 24],
-                iconAnchor: [12, 12],
+                iconSize: [28, 28],
+                iconAnchor: [14, 14],
             });
             return L.marker([report.lat, report.lng], { icon })
+                .setZIndexOffset(report.level === "Evacuate" ? 300 : report.level === "Alert" ? 200 : 0)
                 .addTo(mapInstance.current)
                 .bindPopup(createReportPopup(report));
         });
@@ -357,7 +463,7 @@ function FloodMapLeaflet({
     }, [floodReports]);
 
     return (
-        <div className="relative h-full min-h-[24rem] overflow-hidden rounded-xl bg-slate-200 shadow-card">
+        <div className="relative h-full min-h-[24rem] overflow-hidden rounded-2xl bg-slate-200 shadow-elevated">
             <div ref={mapElement} className="h-full min-h-[24rem] w-full" aria-label="Interactive Batangas City flood hazard map" />
             <div className="flood-map-date-control absolute left-3 top-3 z-[400] rounded-lg bg-white/95 px-3 py-2 shadow-card">
                 <label htmlFor="flood-map-date">Satellite date</label>
@@ -384,20 +490,31 @@ function FloodMapLeaflet({
                         return nextVisible;
                     });
                 }}
-                className="absolute right-3 top-3 z-[400] rounded-lg bg-white/95 px-3 py-2 text-xs font-semibold text-text shadow-card hover:bg-white"
+                className="flood-map-radar-toggle absolute right-3 z-[400] rounded-lg bg-white/95 px-3 py-2 text-xs font-semibold text-text shadow-card hover:bg-white"
                 aria-pressed={radarVisible}
             >
                 {radarVisible ? "Hide radar" : "Show radar"}
             </button>
-            {noahVisible && <div className="pointer-events-none absolute bottom-3 left-3 z-[400] rounded-lg bg-white/95 px-3 py-2 text-xs shadow-card">
-                <p className="mb-1 font-semibold text-text">{NOAH_LABEL}</p>
-                <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    <span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-[#facc15]" />Low</span>
-                    <span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-[#f97316]" />Medium</span>
-                    <span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-[#dc2626]" />High</span>
+            {noahVisible && <div className="flood-map-noah-card pointer-events-none absolute left-3 z-[400] rounded-xl bg-white/90 px-3 py-2 text-xs shadow-card backdrop-blur">
+                <p className="font-semibold text-text">Flood-Prone Areas</p>
+                <p className="text-[0.65rem] text-text/60">Project NOAH 25-year hazard model</p>
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                    <span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-[#facc15]" />Low susceptibility</span>
+                    <span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-[#f97316]" />Medium susceptibility</span>
+                    <span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-[#991b1b]" />High susceptibility</span>
                 </div>
+                {noahStatus === "loading" && <p className="mt-2 text-text/60">Loading flood-prone areas...</p>}
+                {noahStatus === "error" && <p className="mt-2 text-risk-high">Unable to load flood-prone areas.</p>}
             </div>}
-            <p className="pointer-events-none absolute bottom-3 right-3 z-[400] max-w-[16rem] rounded-lg bg-white/95 px-3 py-2 text-xs text-text shadow-card">
+            <div className="flood-map-risk-card pointer-events-none absolute left-3 z-[400] rounded-xl bg-white/90 px-3 py-2 text-xs shadow-card backdrop-blur">
+                <p className="mt-1 font-semibold text-text">
+                    Today's estimated risk: {estimatedRisk[0].toUpperCase() + estimatedRisk.slice(1)}
+                </p>
+                <p className="text-text/70">
+                    Updated at {formatWeatherUpdatedAt(currentWeather?.lastUpdated)}
+                </p>
+            </div>
+            <p className="flood-map-satellite-note pointer-events-none absolute right-3 z-[400] max-w-[16rem] rounded-xl bg-white/90 px-3 py-2 text-xs text-text shadow-card backdrop-blur">
                 {gfmStatus === "loaded"
                     ? `Satellite data for ${gfmDate}. Not live.`
                     : gfmStatus === "empty"
@@ -405,7 +522,7 @@ function FloodMapLeaflet({
                         : "Loading satellite flood data..."}
             </p>
             {mapError && (
-                <p className="absolute right-3 top-3 z-[400] max-w-[15rem] rounded-lg bg-white/95 px-3 py-2 text-xs text-text shadow-card">
+                <p className="flood-map-error absolute z-[400] max-w-[15rem] rounded-lg bg-white/95 px-3 py-2 text-xs text-text shadow-card">
                     {mapError}
                 </p>
             )}
