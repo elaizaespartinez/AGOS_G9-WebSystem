@@ -1,56 +1,71 @@
 import { mockHomeData } from "../data/homeData";
+import { supabase } from "../lib/supabaseClient";
 import {
     listPublicCommunications,
     subscribeToPublicCommunications,
 } from "./publicCommunicationsService";
+import { getHomeWeather } from "./weatherService";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const mapHotlineNumbers = (hotline) => {
+    const value = hotline.number ?? hotline.numbers ?? "";
+
+    if (Array.isArray(value)) {
+        return value.flatMap((number) =>
+            String(number)
+                .split(/[,/]/)
+                .map((item) => item.trim())
+                .filter(Boolean),
+        );
+    }
+
+    return String(value)
+        .split(/[,/]/)
+        .map((number) => number.trim())
+        .filter(Boolean);
+};
+
+const getHotlines = async () => {
+    const { data, error } = await supabase
+        .from("hotlines")
+        .select("*")
+        .eq("active", true)
+        .order("name");
+
+    if (error) throw error;
+
+    return (data || []).map((hotline) => ({
+        id: hotline.id,
+        name: hotline.name,
+        numbers: mapHotlineNumbers(hotline),
+    }));
+};
 
 const getHomeDashboard = async () => {
-    if (!API_BASE_URL) {
-        if (import.meta.env.DEV) {
-            const { alerts } = await listPublicCommunications();
-            const alert = alerts[0];
+    const [weatherResult, hotlinesResult] = await Promise.allSettled([
+        getHomeWeather(),
+        getHotlines(),
+    ]);
 
-            return {
-                ...mockHomeData,
-                ...(alert
-                    ? {
-                          activeAlert: {
-                              title: alert.title,
-                              description: alert.description,
-                              type: "rainfall",
-                              severity:
-                                  alert.severity === "safe"
-                                      ? "safe"
-                                      : alert.severity === "monitor"
-                                        ? "moderate"
-                                        : "high",
-                              updatedAt: alert.startsAt
-                                  ? new Date(alert.startsAt).toLocaleString()
-                                  : "Just now",
-                              source: alert.source,
-                          },
-                      }
-                    : {}),
-            };
-        }
-
-        throw new Error("The Home dashboard API URL is not configured.");
+    if (
+        weatherResult.status === "rejected" &&
+        hotlinesResult.status === "rejected"
+    ) {
+        throw new Error("Unable to load weather and hotline data.");
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/home`);
-
-    if (!response.ok) {
-        throw new Error(`Home dashboard request failed with status ${response.status}.`);
-    }
-
-    const apiData = await response.json();
     const { alerts } = await listPublicCommunications();
     const alert = alerts[0];
 
     return {
-        ...apiData,
+        ...mockHomeData,
+        weather:
+            weatherResult.status === "fulfilled"
+                ? weatherResult.value
+                : mockHomeData.weather,
+        hotlines:
+            hotlinesResult.status === "fulfilled"
+                ? hotlinesResult.value
+                : [],
         ...(alert
             ? {
                   activeAlert: {

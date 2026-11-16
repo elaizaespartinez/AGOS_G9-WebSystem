@@ -36,19 +36,49 @@ export function isExpired(report, now = Date.now()) {
   return Boolean(expiry) && new Date(expiry).getTime() <= now;
 }
 
+function reportType(report) {
+  return report?.reportType || report?.type || report?.category || report?.severity;
+}
+
+function coordinatesFor(report) {
+  const latitude = Number(report?.latitude);
+  const longitude = Number(report?.longitude);
+  return Number.isFinite(latitude) && Number.isFinite(longitude)
+    ? { latitude, longitude }
+    : null;
+}
+
+function distanceInMeters(first, second) {
+  const earthRadius = 6371000;
+  const latitudeDelta = (second.latitude - first.latitude) * Math.PI / 180;
+  const longitudeDelta = (second.longitude - first.longitude) * Math.PI / 180;
+  const latitudeOne = first.latitude * Math.PI / 180;
+  const latitudeTwo = second.latitude * Math.PI / 180;
+  const value = Math.sin(latitudeDelta / 2) ** 2
+    + Math.sin(longitudeDelta / 2) ** 2 * Math.cos(latitudeOne) * Math.cos(latitudeTwo);
+  return earthRadius * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
+}
+
+export function reportsMatch(first, second) {
+  if (!first || !second || reportType(first) !== reportType(second)) return false;
+  if (first.barangayId && second.barangayId) {
+    if (first.barangayId === second.barangayId) return true;
+  }
+  const firstCoordinates = coordinatesFor(first);
+  const secondCoordinates = coordinatesFor(second);
+  return Boolean(
+    firstCoordinates
+    && secondCoordinates
+    && distanceInMeters(firstCoordinates, secondCoordinates) <= 300,
+  );
+}
+
 export function getReportMatchSummary(items = []) {
-  const reports = Array.isArray(items) ? items : [];
+  const reports = (Array.isArray(items) ? items : []).filter(
+    (report) => report.status !== "rejected" && !isExpired(report),
+  );
   const reporters = new Set(reports.map((report) => report.reporterId || report.reporter).filter(Boolean));
-  const byLocation = new Map();
-  reports.forEach((report) => {
-    const key = report.locationId || report.location;
-    if (!key) return;
-    const values = byLocation.get(key) || new Set();
-    values.add(report.type || report.category || report.severity);
-    byLocation.set(key, values);
-  });
-  const conflicts = [...byLocation.values()].filter((values) => values.size > 1).length;
-  return { distinctReporters: reporters.size, conflicts };
+  return { distinctReporters: reporters.size, conflicts: 0 };
 }
 
 export function formatRelativeTime(value, now = Date.now()) {

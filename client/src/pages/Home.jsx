@@ -60,10 +60,15 @@ function Home() {
 
         loadDashboard();
         const unsubscribe = subscribeToPublicCommunications(loadDashboard);
+        const refreshTimer = window.setInterval(
+            loadDashboard,
+            10 * 60 * 1000,
+        );
 
         return () => {
             isMounted = false;
             unsubscribe();
+            window.clearInterval(refreshTimer);
         };
     }, []);
 

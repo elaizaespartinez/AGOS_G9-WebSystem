@@ -18,6 +18,7 @@ import {
     formatRelativeTime,
     getReportMatchSummary,
     isExpired,
+    reportsMatch,
 } from "../../lib/adminRules";
 import EmptyState from "../../components/admin/EmptyState";
 import ErrorState from "../../components/admin/ErrorState";
@@ -34,7 +35,7 @@ const reportTypes = [
     "Unsafe route",
 ];
 const barangays = ["Sta. Rita", "Alangilan", "Kumintang", "Cuta"];
-const statuses = ["all", "pending", "verified", "rejected"];
+const statuses = ["all", "pending", "verified", "rejected", "expired"];
 const risks = ["safe", "monitor", "affected", "evacuate"];
 
 const fieldClass =
@@ -97,7 +98,7 @@ function AdminReports() {
     const selected = reports.find(({ id }) => id === selectedId) || null;
     const summary = aggregateReports(reports);
     const nearbyReports = selected
-        ? reports.filter((report) => report.location === selected.location)
+        ? reports.filter((report) => reportsMatch(selected, report))
         : [];
     const matchSummary = getReportMatchSummary(nearbyReports);
     const aggregationMessage = matchSummary.conflicts
@@ -109,12 +110,12 @@ function AdminReports() {
     const counts = useMemo(
         () => ({
             all: reports.length,
-            pending: reports.filter((report) => report.status === "pending")
-                .length,
+            pending: summary.pending,
             verified: reports.filter((report) => report.status === "verified")
                 .length,
             rejected: reports.filter((report) => report.status === "rejected")
                 .length,
+            expired: summary.expired,
         }),
         [reports],
     );
@@ -275,9 +276,7 @@ function AdminReports() {
                                             {
                                                 getReportMatchSummary(
                                                     reports.filter(
-                                                        (item) =>
-                                                            item.location ===
-                                                            report.location,
+                                                        (item) => reportsMatch(report, item),
                                                     ),
                                                 ).distinctReporters
                                             }{" "}

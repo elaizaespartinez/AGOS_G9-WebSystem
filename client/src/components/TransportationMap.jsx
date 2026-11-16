@@ -17,7 +17,127 @@ const destinationIcon = L.divIcon({
     iconAnchor: [14, 14],
 });
 
-function TransportationMap({ onDestinationsSorted, requestedDestinationId, onDestinationSelected }) {
+function formatPht(value) {
+    return new Intl.DateTimeFormat("en-PH", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Asia/Manila",
+    }).format(new Date(value));
+}
+
+function createRoutePopup(route) {
+    const root = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = `${route.code} · ${route.name}`;
+    root.appendChild(title);
+    const addField = (label, value) => {
+        const field = document.createElement("p");
+        const labelElement = document.createElement("strong");
+        labelElement.textContent = `${label}: `;
+        field.append(labelElement, document.createTextNode(value));
+        root.appendChild(field);
+    };
+    addField("Type", route.routeType);
+    addField("Status", route.effectiveStatus);
+    addField("Reason", route.effectiveReason);
+    addField("Updated", `${formatPht(route.updatedAt)} PHT`);
+    return root;
+}
+
+const routeColors = {
+    safe: "#16a34a",
+    monitor: "#eab308",
+    affected: "#f97316",
+    evacuate: "#dc2626",
+};
+
+function createFloodReportPopup(report) {
+    const root = document.createElement("div");
+    const addField = (label, value) => {
+        const field = document.createElement("p");
+        const labelElement = document.createElement("strong");
+        labelElement.textContent = `${label}: `;
+        field.append(labelElement, document.createTextNode(value));
+        root.appendChild(field);
+    };
+    addField("Location", report.locationName);
+    addField("Level", report.level);
+    if (report.depthCm !== undefined && report.depthCm !== null) addField("Depth", `${report.depthCm} cm`);
+    addField("Note", report.note || "None");
+    addField("Source", report.source);
+    addField("Updated", `${formatPht(report.createdAt)} PHT`);
+    return root;
+}
+
+function distanceBetweenMeters(first, second) {
+    const earthRadius = 6371000;
+    const toRadians = (degrees) => degrees * Math.PI / 180;
+    const latitudeDelta = toRadians(second[0] - first[0]);
+    const longitudeDelta = toRadians(second[1] - first[1]);
+    const latitude = toRadians((first[0] + second[0]) / 2);
+    return Math.sqrt(latitudeDelta ** 2 + (Math.cos(latitude) * longitudeDelta) ** 2) * earthRadius;
+}
+
+function isReportOnRoute(route, report) {
+    const coordinates = route?.geometry?.coordinates || [];
+    const point = [Number(report.lat), Number(report.lng)];
+    if (!Number.isFinite(point[0]) || !Number.isFinite(point[1])) return false;
+    return coordinates.some((coordinate, index) => {
+        const current = [coordinate[1], coordinate[0]];
+        if (distanceBetweenMeters(current, point) <= Number(report.radiusMeters)) return true;
+        const nextCoordinate = coordinates[index + 1];
+        if (!nextCoordinate) return false;
+        const next = [nextCoordinate[1], nextCoordinate[0]];
+        const segmentLength = distanceBetweenMeters(current, next);
+        if (!segmentLength) return false;
+        const ratio = Math.max(0, Math.min(1, (
+            (point[0] - current[0]) * (next[0] - current[0]) +
+            (point[1] - current[1]) * (next[1] - current[1])
+        ) / (
+            (next[0] - current[0]) ** 2 + (next[1] - current[1]) ** 2
+        )));
+        const closest = [
+            current[0] + ratio * (next[0] - current[0]),
+            current[1] + ratio * (next[1] - current[1]),
+        ];
+        return distanceBetweenMeters(closest, point) <= Number(report.radiusMeters);
+    });
+}
+
+function getRouteStatus(route, floodReports) {
+    const intersectingReports = floodReports
+        .filter((report) => isReportOnRoute(route, report))
+        .sort((first, second) => {
+            const severity = { Evacuate: 2, Alert: 1, Monitor: 1 };
+            return (severity[second.level] || 0) - (severity[first.level] || 0)
+                || new Date(second.createdAt) - new Date(first.createdAt);
+        });
+    const worst = intersectingReports[0];
+    if (!worst) {
+        return {
+            status: "Safe",
+            duration: route?.duration ?? null,
+            report: null,
+        };
+    }
+    return {
+        status: worst.level === "Evacuate" ? "Suspended" : "Affected",
+        duration: route.duration,
+        report: worst,
+    };
+}
+
+function TransportationMap({
+    onDestinationsSorted,
+    requestedDestinationId,
+    onDestinationSelected,
+    floodReports = [],
+    onRouteStatusChange,
+    localRoutes = [],
+    requestedLocalRouteId,
+    onLocalRouteSelected,
+    showLocalRoutes = true,
+}) {
     const mapElement = useRef(null);
     const mapInstance = useRef(null);
     const locationMarker = useRef(null);
@@ -29,9 +149,16 @@ function TransportationMap({ onDestinationsSorted, requestedDestinationId, onDes
     const routeRequestId = useRef(0);
     const routeAbortController = useRef(null);
     const routeData = useRef(new Map());
+    const floodReportsRef = useRef(floodReports);
+    const floodReportCircles = useRef([]);
+    const localRouteLayers = useRef(new Map());
     const locationUpdateTimer = useRef(null);
     const lastRoutedPosition = useRef(null);
     const [locationStatus, setLocationStatus] = useState("");
+
+    useEffect(() => {
+        floodReportsRef.current = floodReports;
+    }, [floodReports]);
 
     async function fetchRoadRoute(position, destination, signal) {
         const [latitude, longitude] = position;
@@ -52,6 +179,10 @@ function TransportationMap({ onDestinationsSorted, requestedDestinationId, onDes
         const positions = route.geometry.coordinates.map(([routeLongitude, routeLatitude]) => [routeLatitude, routeLongitude]);
         routeLine.current = L.polyline(positions, { color: "#1d4ed8", weight: 5, opacity: 0.9 }).addTo(mapInstance.current);
         mapInstance.current.fitBounds(routeLine.current.getBounds(), { padding: [40, 40] });
+    }
+
+    function updateRouteStatus(route) {
+        onRouteStatusChange?.(getRouteStatus(route, floodReportsRef.current));
     }
 
     function isCurrentRouteRequest(requestId) {
@@ -105,6 +236,7 @@ function TransportationMap({ onDestinationsSorted, requestedDestinationId, onDes
             const selectedRoute = selected && routeData.current.get(selected.id);
             if (!selected || !selectedRoute) {
                 clearRoute();
+                onRouteStatusChange?.({ status: "Safe", duration: null, report: null });
                 return;
             }
             if (selectedDestination.current !== selected.id) {
@@ -113,6 +245,7 @@ function TransportationMap({ onDestinationsSorted, requestedDestinationId, onDes
             }
             destinationMarkers.current.get(selected.id)?.openPopup();
             drawRoute(selectedRoute);
+            updateRouteStatus(selectedRoute);
             lastRoutedPosition.current = position;
         } catch (error) {
             if (error.name !== "AbortError" && isCurrentRouteRequest(requestId)) {
@@ -194,6 +327,10 @@ function TransportationMap({ onDestinationsSorted, requestedDestinationId, onDes
             window.clearTimeout(locationUpdateTimer.current);
             routeAbortController.current?.abort();
             clearRoute();
+            floodReportCircles.current.forEach((circle) => circle.remove());
+            floodReportCircles.current = [];
+            localRouteLayers.current.forEach((layer) => layer.remove());
+            localRouteLayers.current.clear();
             destinationMarkers.current.clear();
             map.remove();
         };
@@ -204,6 +341,57 @@ function TransportationMap({ onDestinationsSorted, requestedDestinationId, onDes
         const destination = evacuationDestinations.find((item) => item.id === requestedDestinationId);
         if (destination && selectedDestination.current !== destination.id) selectDestination(destination);
     }, [requestedDestinationId]);
+
+    useEffect(() => {
+        const selectedRoute = selectedDestination.current && routeData.current.get(selectedDestination.current);
+        if (selectedRoute) updateRouteStatus(selectedRoute);
+    }, [floodReports]);
+
+    useEffect(() => {
+        if (!mapInstance.current) return;
+        localRouteLayers.current.forEach((layer) => layer.remove());
+        localRouteLayers.current.clear();
+        if (!showLocalRoutes) return;
+        localRoutes
+            .filter((route) => route.geometry?.length > 1)
+            .forEach((route) => {
+                const line = L.polyline(route.geometry, {
+                    color: routeColors[route.effectiveStatus] || routeColors.safe,
+                    weight: 5,
+                    opacity: 0.8,
+                })
+                    .addTo(mapInstance.current)
+                    .bindPopup(createRoutePopup(route))
+                    .on("click", () => onLocalRouteSelected?.(route.id));
+                localRouteLayers.current.set(route.id, line);
+            });
+        if (requestedLocalRouteId) {
+            const selectedLine = localRouteLayers.current.get(requestedLocalRouteId);
+            if (selectedLine) {
+                selectedLine.openPopup();
+                mapInstance.current.fitBounds(selectedLine.getBounds(), { padding: [40, 40] });
+            }
+        }
+    }, [localRoutes, requestedLocalRouteId, showLocalRoutes]);
+
+    useEffect(() => {
+        if (!mapInstance.current) return;
+        floodReportCircles.current.forEach((circle) => circle.remove());
+        const colors = {
+            Evacuate: "#dc2626",
+            Alert: "#f97316",
+            Monitor: "#facc15",
+        };
+        floodReportCircles.current = floodReports
+            .filter((report) => Number.isFinite(Number(report.lat)) && Number.isFinite(Number(report.lng)))
+            .map((report) => L.circle([report.lat, report.lng], {
+                radius: Number(report.radiusMeters),
+                color: colors[report.level] || "#64748b",
+                fillColor: colors[report.level] || "#64748b",
+                fillOpacity: 0.22,
+                weight: 2,
+            }).addTo(mapInstance.current).bindPopup(createFloodReportPopup(report)));
+    }, [floodReports]);
 
     return (
         <div className="relative h-full min-h-[36rem]">

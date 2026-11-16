@@ -80,7 +80,7 @@ const reportSelection = "*, reporter:profiles!reports_reporter_id_fkey(name), ba
 export async function listReports(filters = {}) {
     await getAdminProfile();
     let query = supabase.from("reports").select(reportSelection).order("created_at", { ascending: false });
-    if (filters.status) query = query.eq("status", filters.status);
+    if (filters.status && filters.status !== "expired") query = query.eq("status", filters.status);
     if (filters.type) query = query.eq("report_type", reportTypeValues[filters.type] || filters.type);
     if (filters.barangay) query = query.eq("barangay_id", filters.barangay);
     if (filters.date) query = query.gte("created_at", `${filters.date}T00:00:00.000Z`).lt("created_at", `${filters.date}T23:59:59.999Z`);
@@ -90,7 +90,14 @@ export async function listReports(filters = {}) {
         ...row,
         report_media: await loadReportMedia(row.report_media),
     })));
-    return rows.map(mapReport).filter((report) => !filters.risk || report.risk === filters.risk);
+    return rows
+        .map(mapReport)
+        .filter((report) => !filters.risk || report.risk === filters.risk)
+        .filter((report) => {
+            if (filters.status === "pending") return report.status === "pending" && !isExpired(report);
+            if (filters.status === "expired") return isExpired(report);
+            return !filters.status || report.status === filters.status;
+        });
 }
 
 export async function updateReportStatus(id, status, reason = "", severity) {

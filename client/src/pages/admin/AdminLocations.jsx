@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
-import { useAuth } from "../../contexts/AuthContext";
 import AdminPageHeader from "../../components/admin/AdminPageHeader";
 import EmptyState from "../../components/admin/EmptyState";
 import FloodReportEntryMap from "../../components/admin/FloodReportEntryMap";
@@ -10,6 +9,7 @@ import {
     deleteFloodReport,
     listFloodReports,
     resolveFloodReport,
+    subscribeToFloodReports,
 } from "../../services/floodReportsService";
 
 const fieldClass = "mt-1 min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary";
@@ -39,7 +39,6 @@ function levelStatus(level) {
 }
 
 export default function AdminLocations() {
-    const { session } = useAuth();
     const [reports, setReports] = useState([]);
     const [form, setForm] = useState(initialForm);
     const [loading, setLoading] = useState(true);
@@ -63,8 +62,7 @@ export default function AdminLocations() {
 
     useEffect(() => {
         loadReports();
-        const timer = window.setInterval(loadReports, 60 * 1000);
-        return () => window.clearInterval(timer);
+        return subscribeToFloodReports(loadReports);
     }, []);
 
     function updateForm(changes) {
@@ -104,7 +102,7 @@ export default function AdminLocations() {
                 lat: form.lat,
                 lng: form.lng,
                 expiresAt,
-            }, session);
+            });
             setForm(initialForm);
             setMessage("Flood report entered.");
             await loadReports();
@@ -121,7 +119,7 @@ export default function AdminLocations() {
         setMessage("");
         setError("");
         try {
-            await resolveFloodReport(report.id, session);
+            await resolveFloodReport(report.id);
             setMessage("Flood report resolved.");
             await loadReports();
         } catch (actionError) {
@@ -134,7 +132,7 @@ export default function AdminLocations() {
         setMessage("");
         setError("");
         try {
-            await deleteFloodReport(report.id, session);
+            await deleteFloodReport(report.id);
             setMessage("Flood report deleted.");
             await loadReports();
         } catch (actionError) {

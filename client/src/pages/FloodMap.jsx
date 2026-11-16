@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import StatCard from "../components/StatCard";
 import FloodMapLeaflet from "../components/FloodMapLeaflet";
 import { evacuationDestinations } from "../components/TransportationMap";
-import { listFloodReports } from "../services/floodReportsService";
+import {
+    listFloodReports,
+    subscribeToFloodReports,
+} from "../services/floodReportsService";
 import { getWeather } from "../services/weatherService";
 import "../flood-map.css";
 
@@ -68,7 +71,6 @@ function FloodMap() {
 
     useEffect(() => {
         let mounted = true;
-        let refreshTimer;
 
         async function refreshReports() {
             try {
@@ -91,12 +93,12 @@ function FloodMap() {
         }
 
         refreshReports();
-        refreshTimer = window.setInterval(refreshReports, 60 * 1000);
+        const unsubscribe = subscribeToFloodReports(refreshReports);
         return () => {
             mounted = false;
-            window.clearInterval(refreshTimer);
+            unsubscribe();
         };
-    }, [reportsLastUpdated]);
+    }, []);
 
     const rainfall = weather?.peakRainfall;
     const highestReport = ["Evacuate", "Alert", "Monitor"]
