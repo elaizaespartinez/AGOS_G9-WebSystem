@@ -1,0 +1,242 @@
+.leaflet-top.leaflet-left {
+    top: 12px;
+    left: 12px;
+}
+.leaflet-top.leaflet-right {
+    top: 12px;
+    right: 12px;
+}
+.leaflet-bottom.leaflet-left {
+    bottom: 12px;
+    left: 12px;
+}
+.leaflet-bottom.leaflet-right {
+    right: 12px;
+    bottom: 12px;
+}
+.leaflet-control-zoom,
+.leaflet-control-layers {
+    overflow: hidden;
+    border: 0 !important;
+    border-radius: .75rem;
+    box-shadow: var(--shadow-card) !important;
+}
+.leaflet-control-zoom a,
+.leaflet-control-layers-toggle {
+    background: rgb(255 255 255 / 90%);
+    backdrop-filter: blur(8px);
+}
+.leaflet-control-layers-expanded {
+    padding: .5rem;
+    border-radius: .75rem;
+    background: rgb(255 255 255 / 95%);
+    box-shadow: var(--shadow-card) !important;
+}
+.leaflet-control-layers-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: auto !important;
+    height: auto !important;
+    min-width: 4.25rem;
+    border-radius: 999px;
+    background-image: none !important;
+    color: #334155;
+    font-size: .75rem;
+    font-weight: 700;
+    line-height: 1.25rem;
+    padding: .35rem .75rem;
+}
+.leaflet-popup-pane { z-index: 700; }
+.leaflet-marker-pane { z-index: 600; }
+.leaflet-overlay-pane { z-index: 400; }
+.flood-map-date-control {
+    top: 5rem !important;
+    left: .75rem !important;
+    margin: 0;
+    border-radius: 999px !important;
+    background: rgb(255 255 255 / 90%) !important;
+    backdrop-filter: blur(8px);
+    box-shadow: var(--shadow-card) !important;
+    padding: .35rem .65rem !important;
+}
+.flood-map-date-control label { font-weight: 600; }
+.flood-map-date-control input {
+    border: 0;
+    background: transparent;
+    padding: 0;
+}
+.flood-map-radar-toggle {
+    top: 3.75rem;
+    border-radius: 999px !important;
+    background: rgb(255 255 255 / 90%) !important;
+    backdrop-filter: blur(8px);
+}
+.flood-map-risk-card {
+    bottom: 3.75rem;
+    max-width: min(22rem, calc(100% - 1.5rem));
+}
+.flood-map-noah-card {
+    bottom: 6.75rem;
+    max-width: min(28rem, calc(100% - 1.5rem));
+}
+.flood-map-satellite-note {
+    bottom: 3.75rem;
+}
+.flood-map-error {
+    top: 5.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.flood-weather-card {
+    border-radius: .75rem;
+    background: var(--color-card);
+    padding: .75rem;
+    box-shadow: var(--shadow-card);
+}
+.flood-weather-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--color-secondary);
+}
+.flood-weather-heading h2 { font-size: .85rem; font-weight: 700; }
+.flood-weather-heading span, .flood-weather-updated { color: #64748b; font-size: .65rem; }
+.flood-weather-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .4rem;
+    margin-top: .5rem;
+}
+.flood-weather-grid div {
+    border-radius: .45rem;
+    background: #edf7f8;
+    padding: .4rem .55rem;
+}
+.flood-weather-grid strong, .flood-weather-grid span { display: block; }
+.flood-weather-grid strong { color: #1f7a87; font-size: .85rem; }
+.flood-weather-grid span { margin-top: .1rem; color: #64748b; font-size: .6rem; }
+.flood-weather-updated { margin-top: .4rem; }
+.flood-weather-error { margin-top: .4rem; color: #b91c1c; font-size: .65rem; }
+.flood-stat-note, .flood-estimate-note { display: block; color: #64748b; font-size: .6rem; }
+.flood-estimate-note { margin-top: .5rem; }
+.flood-empty-state { border-radius: .5rem; background: #f8fafc; padding: .75rem; color: #475569; font-size: .75rem; }
+.flood-legend-admin, .flood-legend-satellite {
+    display: inline-block;
+    width: .65rem;
+    height: .65rem;
+    border-radius: 999px;
+}
+.flood-legend-admin { background: #dc2626; }
+.flood-legend-satellite { background: #d946ef; }
+.flood-map-date-control {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-top: .35rem;
+    color: #475569;
+    font-size: .65rem;
+}
+.flood-map-date-control input {
+    border: 1px solid #cbd5e1;
+    border-radius: .25rem;
+    padding: .2rem .3rem;
+    color: #334155;
+    font-size: .65rem;
+}
+.flood-weather-marker {
+    display: grid;
+    place-items: center;
+    width: 28px !important;
+    height: 28px !important;
+    border: 2px solid white;
+    border-radius: 999px;
+    background: #2e9eac;
+    color: white;
+    font-size: 14px;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 30%);
+}
+.flood-facility-marker {
+    display: grid;
+    place-items: center;
+    width: 28px !important;
+    height: 28px !important;
+    border: 2px solid white;
+    border-radius: 999px;
+    background: #2e9eac;
+    color: white;
+    font-size: 16px;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 30%);
+}
+.flood-report-marker {
+    display: grid;
+    place-items: center;
+    width: 28px !important;
+    height: 28px !important;
+    border: 2px solid white;
+    border-radius: 999px;
+    color: white;
+    font-size: 13px;
+    font-weight: 800;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 30%);
+}
+.flood-report-marker::before { content: "!"; }
+.flood-report-marker--evacuate { background: #dc2626; }
+.flood-report-marker--alert { background: #f97316; }
+.flood-report-marker--monitor { background: #facc15; color: #713f12; }
+.flood-page-legend-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem .75rem;
+    padding: .35rem .75rem;
+    border-radius: .5rem;
+    background: var(--color-card, #fff);
+    font-size: .7rem;
+    color: #475569;
+    box-shadow: var(--shadow-card);
+    flex-shrink: 0;
+}
+.flood-page-legend-item {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    color: #334155;
+    font-size: .7rem;
+    font-weight: 600;
+}
+.flood-page-legend-item i {
+    display: inline-block;
+    width: .55rem;
+    height: .55rem;
+    border-radius: .1rem;
+}
+.flood-sidebar-scroll {
+    scrollbar-width: thin;
+}
+.flood-sidebar-scroll::-webkit-scrollbar {
+    width: 5px;
+}
+.flood-sidebar-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+}
+.flood-sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+@media (max-width: 639px) {
+    .flood-weather-grid { gap: .4rem; }
+    .flood-weather-grid strong { font-size: .8rem; }
+    .flood-map-date-control {
+        max-width: calc(100% - 7rem);
+    }
+    .flood-map-date-control input {
+        max-width: 7rem;
+    }
+    .flood-map-risk-card,
+    .flood-map-noah-card,
+    .flood-map-satellite-note {
+        max-width: calc(100% - 1.5rem);
+    }
+}

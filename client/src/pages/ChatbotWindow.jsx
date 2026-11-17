@@ -1,110 +1,217 @@
-import { CircleAlert, SendHorizonal, MoveRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CircleAlert, SendHorizontal, MoveRight, Paperclip, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import chatbotIcon from "../assets/chatbot-icon.png";
+import ChatMarkdown from "../components/ChatMarkdown";
+import { askChat } from "../services/chat";
+import "../chatbot.css";
 
-function ChatbotWindow() {
+const INITIAL_MESSAGE = {
+    role: "assistant",
+    content: "Hi, I'm **Agos**, your disaster preparedness assistant for Batangas City and the Philippines.\n\nAsk me about floods, typhoons, earthquakes, Taal Volcano, evacuation, or go-bags. For live flood status and routes, check the Flood Map, Transportation, and Announcements pages.",
+    timestamp: new Date(),
+};
+
+const QUICK_PROMPTS = [
+    "What should I prepare before heavy rain?",
+    "What should I do if floodwater is rising?",
+    "Go-bag checklist for my family",
+    "What do PAGASA typhoon wind signals mean?",
+    "What should I do during an earthquake?",
+    "Taal Volcano alert levels explained",
+];
+
+function formatTime(timestamp) {
+    return new Intl.DateTimeFormat("en-PH", {
+        hour: "numeric",
+        minute: "2-digit",
+    }).format(timestamp instanceof Date ? timestamp : new Date(timestamp));
+}
+
+function ChatbotWindow({ isOpen }) {
+    const messagesRef = useRef(null);
+    const shouldScrollRef = useRef(false);
+    const isNearBottomRef = useRef(true);
+    const [messages, setMessages] = useState([INITIAL_MESSAGE]);
+    const [input, setInput] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState("");
+
+    function scrollMessagesToBottom(behavior = "smooth") {
+        const container = messagesRef.current;
+        if (!container) return;
+        container.scrollTo({ top: container.scrollHeight, behavior });
+    }
+
+    function handleMessagesScroll() {
+        const container = messagesRef.current;
+        if (!container) return;
+        isNearBottomRef.current = container.scrollHeight - container.scrollTop - container.clientHeight < 48;
+    }
+
+    useEffect(() => {
+        const container = messagesRef.current;
+        if (!container) return undefined;
+
+        const resizeObserver = new ResizeObserver(() => {
+            if (shouldScrollRef.current || isNearBottomRef.current) {
+                scrollMessagesToBottom();
+                shouldScrollRef.current = false;
+            }
+        });
+        const mutationObserver = new MutationObserver(() => {
+            if (shouldScrollRef.current || isNearBottomRef.current) {
+                scrollMessagesToBottom();
+                shouldScrollRef.current = false;
+            }
+        });
+        resizeObserver.observe(container);
+        mutationObserver.observe(container, { childList: true, subtree: true, characterData: true });
+        return () => {
+            resizeObserver.disconnect();
+            mutationObserver.disconnect();
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        shouldScrollRef.current = true;
+        requestAnimationFrame(() => scrollMessagesToBottom());
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (shouldScrollRef.current || isNearBottomRef.current) {
+            requestAnimationFrame(() => {
+                scrollMessagesToBottom();
+                shouldScrollRef.current = false;
+            });
+        }
+    }, [messages, isLoading, error]);
+
+    async function handleSubmit(event, prompt = input) {
+        event?.preventDefault();
+        const text = prompt.trim();
+
+        if (!text || isLoading) return;
+
+        const userMessage = { role: "user", content: text, timestamp: new Date() };
+        const conversation = [...messages, userMessage];
+
+        shouldScrollRef.current = true;
+        setMessages(conversation);
+        setInput("");
+        setError("");
+        setIsLoading(true);
+
+        try {
+            // Send earlier turns (not the new one) so Agos can follow the conversation.
+            const history = messages.map(({ role, content }) => ({ role, content }));
+            const result = await askChat(text, history);
+            setMessages((currentMessages) => [
+                ...currentMessages,
+                { role: "assistant", content: result.reply, provider: result.provider, timestamp: new Date() },
+            ]);
+        } catch (requestError) {
+            setError(requestError.message);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
     return (
         <section
-            className="
-                fixed
-                top-24
-                right-4
-                bottom-24
-                left-4
-                z-40
-                flex
-                flex-col
-                rounded-xl
-                bg-white
-                overflow-hidden
-                shadow-elevated
-
-                md:top-20
-                md:right-6
-                md:bottom-24
-                md:left-auto
-                md:w-[min(90vw,60rem)]
-            "
+            className={`chatbot-panel ${isOpen ? "chatbot-panel-open" : "chatbot-panel-closed"}`}
+            aria-hidden={!isOpen}
         >
-            {/* Header */}
-            <header className="shrink-0 border-b p-2 flex items-center gap-2">
-                <img src={chatbotIcon} alt="Chatbot Icon" className="h-8 w-auto object-contain"></img>
-                <h2 className="">
-                    Agos
-                </h2>
+            <header className="chatbot-header">
+                <img src={chatbotIcon} alt="" className="chatbot-header-avatar" />
+                <div>
+                    <h2>Agos</h2>
+                    <p><span className="chatbot-online-dot" /> Online</p>
+                </div>
             </header>
 
-            {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-4">
-                <p>Hi, I'm Agos</p>
-                <p>How can I help you today?</p>
+            <div ref={messagesRef} className="chatbot-messages" onScroll={handleMessagesScroll}>
+                {messages.map((message, index) => (
+                    <div
+                        key={`${message.role}-${index}`}
+                        className={`chatbot-message-row ${message.role === "user" ? "chatbot-message-user" : "chatbot-message-bot"}`}
+                    >
+                        {message.role === "assistant" && <img src={chatbotIcon} alt="" className="chatbot-message-avatar" />}
+                        <div>
+                            <div className={`chatbot-bubble ${message.role === "assistant" ? "chatbot-bubble-rich" : ""}`}>
+                                {message.role === "assistant"
+                                    ? <ChatMarkdown content={message.content} />
+                                    : message.content}
+                            </div>
+                            <span className="chatbot-timestamp">{formatTime(message.timestamp)}</span>
+                        </div>
+                        {message.role === "user" && <span className="chatbot-user-avatar"><UserRound size={14} /></span>}
+                    </div>
+                ))}
+
+                {isLoading && (
+                    <div className="chatbot-message-row chatbot-message-bot">
+                        <img src={chatbotIcon} alt="" className="chatbot-message-avatar" />
+                        <div className="chatbot-bubble chatbot-thinking" aria-label="Agos is typing">
+                            <span /><span /><span />
+                        </div>
+                    </div>
+                )}
+
+                {messages.length === 1 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                        {QUICK_PROMPTS.map((prompt) => (
+                            <button
+                                key={prompt}
+                                type="button"
+                                onClick={(event) => handleSubmit(event, prompt)}
+                                className="chatbot-prompt"
+                            >
+                                {prompt}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {error && (
+                    <p className="chatbot-error">
+                        {error}
+                    </p>
+                )}
             </div>
 
-            {/* Message Input */}
-            <form className="flex shrink-0 gap-2 border-t p-2">
+            <form className="chatbot-input-row" onSubmit={handleSubmit}>
+                <button type="button" className="chatbot-attachment" aria-label="Attach a file">
+                    <Paperclip size={18} />
+                </button>
                 <input
                     type="text" id="chat-input"
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    disabled={isLoading}
                     placeholder="Type a message..."
-                    className="
-                        min-w-0
-                        flex-1
-                        rounded-input
-                        border
-                        px-3
-                        py-2
-                        outline-none
-                        focus:border-primary
-                    "
+                    className="chatbot-input"
                 />
 
                 <button
                     type="submit"
                     aria-label="Send message"
-                    className="
-                        flex
-                        shrink-0
-                        items-center
-                        justify-center
-                        rounded-button
-                        px-4
-                        py-2
-                        text-primary
-                        hover:bg-primary/10
-                    "
+                    disabled={isLoading || !input.trim()}
+                    className="chatbot-send"
                 >
-                    <SendHorizonal className="h-5 w-5" />
+                    <SendHorizontal size={19} />
                 </button>
             </form>
 
-            {/* Emergency Notice */}
-            <div className="shrink-0 border-t bg-red-50 p-3 ">
-                <div className="flex items-start gap-2">
-                    <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
+            <div className="chatbot-emergency">
+                <CircleAlert size={20} />
 
-                    <div className="min-w-0">
-                        <p className="text-sm text-red-500">
-                            In an immediate emergency, contact your local
-                            emergency hotline.
-                        </p>
+                <p>In an immediate emergency, contact your local emergency hotline.</p>
 
-                        <Link
-                            to="/emergency"
-                            className="
-                                mt-1
-                                inline-flex
-                                items-center
-                                gap-1
-                                text-sm
-                                font-medium
-                                text-red-600
-                                hover:underline
-                            "
-                        >
-                            View Emergency Hotlines
-                            <MoveRight className="h-4 w-4" />
-                        </Link>
-                    </div>
-                </div>
+                <Link to="/emergency" className="chatbot-emergency-link">
+                    View Emergency Hotlines <MoveRight size={16} />
+                </Link>
             </div>
         </section>
     );
