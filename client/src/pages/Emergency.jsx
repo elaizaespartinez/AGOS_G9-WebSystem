@@ -4,31 +4,32 @@ import dswdLogo from "../assets/agency-logos/dswd.png";
 import pcgLogo from "../assets/agency-logos/pcg.png";
 import pnpLogo from "../assets/agency-logos/pnp.png";
 import dostLogo from "../assets/agency-logos/dost.png";
-import {useEffect, useState} from "react";
-import {getLocalResponse} from "../services/emergencyService.js";
-import {defaultLocalResponse} from "../data/emergencyData.js";
+import { useEffect, useState } from "react";
+import { getLocalResponse } from "../services/emergencyService.js";
+import {
+    barangays,
+    cityWideHotlines,
+    defaultLocalResponse,
+} from "../data/emergencyData.js";
 
 function Emergency() {
-
-    const [location, setLocation] = useState({
-        province: "Batangas",
-        municipality: "Batangas City",
-        barangay: "Alangilan",
-    });
-
+    const [barangay, setBarangay] = useState("Alangilan");
     const [localResponse, setLocalResponse] = useState(defaultLocalResponse);
-    const  [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        let isMounted = true; 
+        let isMounted = true;
         setLoading(true);
-        getLocalResponse(location).then((data) => {
-            if (!isMounted) return; 
-            const response = data || defaultLocalResponse;
-            setLocalResponse({
-                ...defaultLocalResponse,
-                ...data,
-                hotlines: Array.isArray(data.hotlines) ? data.hotlines : [],
+        getLocalResponse({ barangay })
+            .then((data) => {
+                if (!isMounted) return;
+                const hotlines = Array.isArray(data?.hotlines)
+                    ? data.hotlines.filter((item) => item && typeof item.number === "string" && item.number.trim().length > 0)
+                    : [];
+                setLocalResponse({
+                    ...defaultLocalResponse,
+                    ...data,
+                    hotlines,
                 });
             })
             .catch((error) => {
@@ -43,135 +44,176 @@ function Emergency() {
             });
 
         return () => {
-            isMounted = false; 
-            }
-    }, [location]);
+            isMounted = false;
+        };
+    }, [barangay]);
+
     const natHotlines = [
-    {
-        name: "NDRRMC",
-        logo: ndrrmcLogo,
-        numbers: ["8911-5061 to 65 local 100", "(02) 8911 - 1406", "(+632) 91114016"],
-    },
-    {
-        name: "Philippine Red Cross",
-        logo: redCrossLogo,
-        numbers: ["143", "(02) 527 - 0000"],
-    },
-    {
-        name: "DOST",
-        logo: dostLogo,
-        numbers: ["(02) 824 - 0800"],
-    },
-    {
-        name: "Philippine Coast Guard",
-        logo: pcgLogo,
-        numbers: ["(02) 527 - 8481 to 89", "(02) 527 - 3877", "0917 724 3682"],
-    },
-    {
-        name: "Philippine National Police",
-        logo: pnpLogo,
-        numbers: ["8911-5061 to 65 local 100", "(02) 8911-1406", "(+632) 91114016"],
-    },
-    {
-        name: "DSWD",
-        logo: dswdLogo,
-        numbers: ["0917 110 5686", "09199116200", "inquiry@dswd.gov.ph"],
-    },
-];
+        {
+            name: "NDRRMC",
+            logo: ndrrmcLogo,
+            numbers: ["8911-5061 to 65 local 100", "(02) 8911 - 1406", "(+632) 91114016"],
+        },
+        {
+            name: "Philippine Red Cross",
+            logo: redCrossLogo,
+            numbers: ["143", "(02) 527 - 0000"],
+        },
+        {
+            name: "DOST",
+            logo: dostLogo,
+            numbers: ["(02) 824 - 0800"],
+        },
+        {
+            name: "Philippine Coast Guard",
+            logo: pcgLogo,
+            numbers: ["(02) 527 - 8481 to 89", "(02) 527 - 3877", "0917 724 3682"],
+        },
+        {
+            name: "Philippine National Police",
+            logo: pnpLogo,
+            numbers: ["117", "(02) 8722-0650"],
+        },
+        {
+            name: "DSWD",
+            logo: dswdLogo,
+            numbers: ["0917 110 5686", "09199116200", "inquiry@dswd.gov.ph"],
+        },
+    ];
 
     const getHref = (line) =>
-    line.includes("@")
-        ? `mailto:${line}`
-        : /\bto\b|local/.test(line)
-        ? null
-        : `tel:${line.replace(/[^\d+]/g, "")}`;
+        line.includes("@")
+            ? `mailto:${line}`
+            : /\bto\b|local/.test(line)
+            ? null
+            : `tel:${line.replace(/[^\d+]/g, "")}`;
 
-;
     return (
-        <main className="md:mx-32 p-2 bg-background">
-           
-
+        <div className="md:mx-32 p-2 bg-background">
             <section className="p-2 flex flex-col gap-6 bg-white px-6 py-8 rounded-lg shadow-elevated">
-                <article className="flex flex-col gap-6 bg-white rounded-lg ">
-                    <h2 className="text-xl font-bold">Find your local response contact</h2>
-                    <div className="flex flex-col gap-2 md:flex-row md:gap-8 justify-between">
+                <article className="flex flex-col gap-4 bg-white rounded-lg">
+                    <h2 className="text-xl font-bold">Batangas City emergency contacts</h2>
+                    <div className="w-full max-w-md">
                         <div className="flex flex-col gap-2 w-full">
-                            <label htmlFor="province" className="text-primary uppercase font-bold">Province</label>
-                            <select id="province" value={location.province} onChange={(e) => setLocation((prev) => ({ ...prev, province: e.target.value }))} className="bg-background font-agos rounded-lg w-full p-3 text-sm text-text/80 font-semibold border border-gray-300 focus:outline-none focus:ring-1 focus:ring-secondary hover:border-secondary">
-                                <option value="">Select Province</option>
-                                <option value="batangas">Batangas</option>
-                            </select>
-                        </div>
-
-                        <div className="flex flex-col gap-2 w-full">
-                            <label htmlFor="municipality" className="text-primary uppercase font-bold">Municipality / City</label>
-                            <select id="municipality" value={location.municipality} onChange={(e) => setLocation((prev) => ({ ...prev, municipality: e.target.value }))} className="bg-background font-agos rounded-lg w-full p-3 text-sm text-text/80 font-semibold border border-gray-300 focus:outline-none focus:ring-1 focus:ring-secondary hover:border-secondary">
-                                <option value="">Select Municipality / City</option>
-                                <option value="batangas-city">Batangas City</option>
-                            </select>
-                        </div>
-
-                        <div className="flex flex-col gap-2 w-full">
-                            <label htmlFor="barangay" className="text-primary uppercase font-bold">Barangay</label>
-                            <select id="barangay" value={location.barangay} onChange={(e) => setLocation((prev) => ({ ...prev, barangay: e.target.value }))} className="bg-background font-agos rounded-lg w-full p-3 text-sm text-text/80 font-semibold border border-gray-300 focus:outline-none focus:ring-1 focus:ring-secondary hover:border-secondary  ">
+                            <label htmlFor="barangay" className="text-primary uppercase font-bold">
+                                Your barangay
+                            </label>
+                            <select
+                                id="barangay"
+                                value={barangay}
+                                onChange={(e) => setBarangay(e.target.value)}
+                                className="bg-background font-agos rounded-lg w-full p-3 text-sm text-text/80 font-semibold border border-gray-300 focus:outline-none focus:ring-1 focus:ring-secondary hover:border-secondary"
+                            >
                                 <option value="">Select Barangay</option>
-                                <option value="alangilan">Alangilan</option>
+                                {barangays.map((name) => (
+                                    <option key={name} value={name}>
+                                        {name}
+                                    </option>
+                                ))}
                             </select>
                         </div>
                     </div>
                 </article>
 
-                <div className="relative w-full  mx-auto">
-            
-                    <div
-                        aria-hidden="true"
-                        className="pointer-events-none absolute inset-0 rounded-2xl border-[5px] border-[#2b9db5] bg-[#e9f5f6]"
-                        style={{ filter: "url(#wobbly-border) drop-shadow(2px 4px 3px rgba(0,0,0,0.25))" }}
-                    />
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    {/* City-wide hotlines card */}
+                    <div className="relative w-full">
+                        <div
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-0 rounded-2xl border-[5px] border-[#2b9db5] bg-[#e9f5f6]"
+                            style={{ filter: "url(#wobbly-border) drop-shadow(2px 4px 3px rgba(0,0,0,0.25))" }}
+                        />
 
-                    <div className="relative z-10 flex flex-col gap-4 px-5 py-6 sm:px-10 sm:py-8">
-                        <header className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold uppercase text-gray-600 sm:text-sm">
-                            <span className="tracking-wide">Local Response</span>
-                            <span aria-hidden="true">&mdash;</span>
-                            <span className="text-sm sm:text-base">{localResponse.organization || "Local response information unavailable"}</span>
-                        </header>
+                        <div className="relative z-10 flex h-full flex-col gap-4 px-5 py-6 sm:px-10 sm:py-8">
+                            <header className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold uppercase text-gray-600 sm:text-sm">
+                                <span className="tracking-wide">City-Wide Response</span>
+                                <span aria-hidden="true">&mdash;</span>
+                                <span className="text-sm sm:text-base">Batangas City</span>
+                            </header>
 
-                        <h2 className="text-2xl font-extrabold text-[#c4161c] sm:text-3xl">
-                            {localResponse.location || "Select a location"}
-                        </h2>
+                            <h2 className="text-2xl font-extrabold text-[#c4161c] sm:text-3xl">
+                                City-wide hotlines
+                            </h2>
 
-                        {loading ? (
-                        <p className="py-6 text-center text-gray-500">
-                            Loading emergency contacts...
-                        </p>
-                    ) : localResponse.hotlines.length > 0 ? (
-                        <ul className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-4">
-                            {localResponse.hotlines.map(({ label, number }) => (
-                                <li key={`${label}-${number}`}>
-                                    <a
-                                        href={`tel:${number.replace(/[^\d+]/g, "")}`}
-                                        className="flex h-full flex-col items-center justify-center gap-1 rounded-2xl border-2 border-red-200 bg-gray-100 px-4 py-3 text-center shadow-[inset_0_0_10px_rgba(220,120,120,0.35)] transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2b9db5]"
-                                    >
-                                        <span className="text-xl font-extrabold tracking-wide text-[#1c6b7a] sm:text-2xl">
-                                            {number}
-                                        </span>
+                            <ul className="mt-2 grid grid-cols-1 gap-4">
+                                {cityWideHotlines.map(({ label, number }) => (
+                                    <li key={`${label}-${number}`}>
+                                        <a
+                                            href={`tel:${number.replace(/[^\d+]/g, "")}`}
+                                            className="flex h-full flex-col items-center justify-center gap-1 rounded-2xl border-2 border-red-200 bg-gray-100 px-4 py-3 text-center shadow-[inset_0_0_10px_rgba(220,120,120,0.35)] transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2b9db5]"
+                                        >
+                                            <span className="text-xl font-extrabold tracking-wide text-[#1c6b7a] sm:text-2xl">
+                                                {number}
+                                            </span>
 
-                                        <span className="text-[11px] italic text-[#1c6b7a] sm:text-xs">
-                                            {label}
-                                        </span>
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="py-6 text-center text-gray-500">
-                            No emergency contacts available for this location.
-                        </p>
-                    )}
+                                            <span className="text-[11px] italic text-[#1c6b7a] sm:text-xs">
+                                                {label}
+                                            </span>
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+
+                    {/* Barangay hotline card */}
+                    <div className="relative w-full">
+                        <div
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-0 rounded-2xl border-[5px] border-[#2b9db5] bg-[#e9f5f6]"
+                            style={{ filter: "url(#wobbly-border) drop-shadow(2px 4px 3px rgba(0,0,0,0.25))" }}
+                        />
+
+                        <div className="relative z-10 flex h-full flex-col gap-4 px-5 py-6 sm:px-10 sm:py-8">
+                            <header className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold uppercase text-gray-600 sm:text-sm">
+                                <span className="tracking-wide">Barangay Response</span>
+                                <span aria-hidden="true">&mdash;</span>
+                                <span className="text-sm sm:text-base">
+                                    {localResponse.organization || (barangay ? `${barangay} Barangay Hall` : "Local Response")}
+                                </span>
+                            </header>
+
+                            <h2 className="text-2xl font-extrabold text-[#c4161c] sm:text-3xl">
+                                {localResponse.location || (barangay ? `${barangay}, Batangas City` : "Select a barangay")}
+                            </h2>
+
+                            {loading ? (
+                                <p className="py-6 text-center text-gray-500">
+                                    Loading emergency contacts...
+                                </p>
+                            ) : Array.isArray(localResponse?.hotlines) && localResponse.hotlines.filter((item) => item?.number).length > 0 ? (
+                                <ul className="mt-2 grid grid-cols-1 gap-4">
+                                    {localResponse.hotlines
+                                        .filter((item) => item && typeof item.number === "string" && item.number.trim().length > 0)
+                                        .map(({ label, number }) => (
+                                            <li key={`${label}-${number}`}>
+                                                <a
+                                                    href={`tel:${number.replace(/[^\d+]/g, "")}`}
+                                                    className="flex h-full flex-col items-center justify-center gap-1 rounded-2xl border-2 border-red-200 bg-gray-100 px-4 py-3 text-center shadow-[inset_0_0_10px_rgba(220,120,120,0.35)] transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2b9db5]"
+                                                >
+                                                    <span className="text-xl font-extrabold tracking-wide text-[#1c6b7a] sm:text-2xl">
+                                                        {number}
+                                                    </span>
+
+                                                    <span className="text-[11px] italic text-[#1c6b7a] sm:text-xs">
+                                                        {label}
+                                                    </span>
+                                                </a>
+                                            </li>
+                                        ))}
+                                </ul>
+                            ) : (
+                                <div className="flex flex-1 items-center justify-center py-6 text-center">
+                                    <p className="rounded-xl border border-dashed border-red-200 bg-white/70 p-4 font-semibold text-gray-700">
+                                        No barangay number listed. Call CDRRMO (043) 702-3902.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                <div className="w-full  mx-auto rounded-md border border-dotted border-sky-400 bg-white p-4 shadow-md sm:p-6">
+                <div className="w-full mx-auto rounded-md border border-dotted border-sky-400 bg-white p-4 shadow-md sm:p-6">
                     <h2 className="mb-4 text-xl font-semibold text-gray-900 sm:text-2xl">
                         National Hotlines
                     </h2>
@@ -205,7 +247,7 @@ function Emergency() {
                                     {numbers.map((line) => {
                                         const href = getHref(line);
                                         return href ? (
-                                            <a key={line} href={href} className="hover:underline font-agos  focus:outline-none focus-visible:underline">
+                                            <a key={line} href={href} className="hover:underline font-agos focus:outline-none focus-visible:underline">
                                                 {line}
                                             </a>
                                         ) : (
@@ -217,10 +259,9 @@ function Emergency() {
                         ))}
                     </ul>
                 </div>
-
             </section>
-        </main>
-    )
+        </div>
+    );
 }
 
 export default Emergency;

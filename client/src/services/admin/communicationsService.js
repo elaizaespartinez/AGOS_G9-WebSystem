@@ -19,6 +19,92 @@ export const ANNOUNCEMENT_CATEGORIES = [
 ];
 export const ANNOUNCEMENT_SEVERITIES = ["low", "moderate", "high"];
 
+const STORAGE_KEYS = {
+    ALERTS: "admin_alerts_cache",
+    ANNOUNCEMENTS: "admin_announcements_cache",
+    LOCATIONS: "admin_locations_cache",
+};
+
+const memoryCache = {
+    alerts: null,
+    announcements: null,
+    locations: null,
+};
+
+function readSession(key) {
+    if (typeof sessionStorage === "undefined") return null;
+    try {
+        const raw = sessionStorage.getItem(key);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeSession(key, data) {
+    if (typeof sessionStorage === "undefined") return;
+    try {
+        sessionStorage.setItem(key, JSON.stringify(data));
+    } catch {
+        // Ignore quota errors
+    }
+}
+
+export function getCachedAlerts() {
+    if (memoryCache.alerts) return memoryCache.alerts;
+    const session = readSession(STORAGE_KEYS.ALERTS);
+    if (session) memoryCache.alerts = session;
+    return memoryCache.alerts;
+}
+
+export function getCachedAnnouncements() {
+    if (memoryCache.announcements) return memoryCache.announcements;
+    const session = readSession(STORAGE_KEYS.ANNOUNCEMENTS);
+    if (session) memoryCache.announcements = session;
+    return memoryCache.announcements;
+}
+
+export function getCachedLocations() {
+    if (memoryCache.locations) return memoryCache.locations;
+    const session = readSession(STORAGE_KEYS.LOCATIONS);
+    if (session) memoryCache.locations = session;
+    return memoryCache.locations;
+}
+
+export function setCachedAlerts(data) {
+    memoryCache.alerts = data;
+    writeSession(STORAGE_KEYS.ALERTS, data);
+}
+
+export function setCachedAnnouncements(data) {
+    memoryCache.announcements = data;
+    writeSession(STORAGE_KEYS.ANNOUNCEMENTS, data);
+}
+
+export function setCachedLocations(data) {
+    memoryCache.locations = data;
+    writeSession(STORAGE_KEYS.LOCATIONS, data);
+}
+
+function throttle(fn, delayMs = 3000) {
+    let lastRun = 0;
+    let timer = null;
+    return (...args) => {
+        const now = Date.now();
+        const timeSince = now - lastRun;
+        if (timeSince >= delayMs) {
+            lastRun = now;
+            fn(...args);
+        } else {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                lastRun = Date.now();
+                fn(...args);
+            }, delayMs - timeSince);
+        }
+    };
+}
+
 const mapAlert = (row, targets = []) => ({
     id: row.id,
     title: row.title,
@@ -28,7 +114,7 @@ const mapAlert = (row, targets = []) => ({
     startsAt: row.starts_at,
     expiresAt: row.expires_at,
     source: row.source,
-    issuingAdministrator: row.creator?.name || row.created_by || adminName,
+    issuingAdministrator: row.creator?.name || "AGOS Administration",
     status: row.status,
 });
 
@@ -42,7 +128,7 @@ const mapAnnouncement = (row, targets = []) => ({
     attachmentUrl: row.attachment_url || "",
     source: row.source,
     publishedAt: row.published_at,
-    issuingAdministrator: row.creator?.name || row.created_by || adminName,
+    issuingAdministrator: row.creator?.name || "AGOS Administration",
     status: row.status,
 });
 
@@ -153,7 +239,14 @@ async function persistTargets(table, foreignKey, communicationId, names) {
 }
 
 export async function listCommunicationLocations() {
-    if (useMockAdmin) return mockLocations.map(({ id, name }) => ({ id, name }));
+    const cached = getCachedLocations();
+    if (cached && cached.length) return cached;
+
+    if (useMockAdmin) {
+        const locations = mockLocations.map(({ id, name }) => ({ id, name }));
+        setCachedLocations(locations);
+        return locations;
+    }
 
     const [citiesResult, barangaysResult] = await Promise.all([
         supabase.from("cities_municipalities").select("psgc_code, name").order("name"),
@@ -163,7 +256,7 @@ export async function listCommunicationLocations() {
     if (citiesResult.error) throw citiesResult.error;
     if (barangaysResult.error) throw barangaysResult.error;
 
-    return [
+    const locations = [
         ...(citiesResult.data || []).map(({ psgc_code, name }) => ({
             id: psgc_code,
             name,
@@ -174,23 +267,32 @@ export async function listCommunicationLocations() {
             value: name,
         })),
     ];
+
+    setCachedLocations(locations);
+    return locations;
 }
 
 export async function listAlerts() {
-    if (useMockAdmin) return mockAlerts.map((alert) => ({ ...alert }));
+    let result;
+    if (useMockAdmin) {
+        result = mockAlerts.map((alert) => ({ ...alert }));
+    } else {
+        const { data, error } = await supabase
+            .from("alerts")
+            .select("*, creator:profiles!alerts_created_by_fkey(name)")
+            .order("created_at", { ascending: false });
+        if (error) throw error;
 
-    const { data, error } = await supabase
-        .from("alerts")
-        .select("*, creator:profiles!alerts_created_by_fkey(name)")
-        .order("created_at", { ascending: false });
-    if (error) throw error;
+        const targets = await loadTargets(
+            "alert_targets",
+            "alert_id",
+            data.map(({ id }) => id),
+        );
+        result = data.map((row) => mapAlert(row, targets[row.id] || []));
+    }
 
-    const targets = await loadTargets(
-        "alert_targets",
-        "alert_id",
-        data.map(({ id }) => id),
-    );
-    return data.map((row) => mapAlert(row, targets[row.id] || []));
+    setCachedAlerts(result);
+    return result;
 }
 
 export async function saveAlert(input, id = null) {
@@ -211,7 +313,13 @@ export async function saveAlert(input, id = null) {
         if (index >= 0) mockAlerts[index] = alert;
         else mockAlerts.unshift(alert);
         await recordAudit(id ? "alert_edit" : "alert_create", "alert", alert.id, {});
-        return { ...alert };
+        const saved = { ...alert };
+        setCachedAlerts(
+            memoryCache.alerts
+                ? [saved, ...memoryCache.alerts.filter((item) => item.id !== saved.id)]
+                : [saved],
+        );
+        return saved;
     }
 
     const { user, name } = await getAdminProfile();
@@ -237,7 +345,13 @@ export async function saveAlert(input, id = null) {
         affectedBarangays: input.affectedBarangays,
         administrator: name,
     });
-    return mapAlert(data, input.affectedBarangays);
+    const saved = mapAlert(data, input.affectedBarangays);
+    setCachedAlerts(
+        memoryCache.alerts
+            ? [saved, ...memoryCache.alerts.filter((item) => item.id !== saved.id)]
+            : [saved],
+    );
+    return saved;
 }
 
 export async function updateAlertStatus(id, status) {
@@ -246,7 +360,13 @@ export async function updateAlertStatus(id, status) {
         if (!alert) throw new Error("Alert not found.");
         alert.status = status;
         await recordAudit(`alert_${status}`, "alert", id, {});
-        return { ...alert };
+        const updated = { ...alert };
+        if (memoryCache.alerts) {
+            setCachedAlerts(
+                memoryCache.alerts.map((item) => (item.id === id ? { ...item, status } : item)),
+            );
+        }
+        return updated;
     }
 
     await getAdminProfile();
@@ -258,24 +378,36 @@ export async function updateAlertStatus(id, status) {
         .single();
     if (updateError) throw updateError;
     await recordAudit(`alert_${status}`, "alert", id, {});
-    return mapAlert(data);
+    const updated = mapAlert(data);
+    if (memoryCache.alerts) {
+        setCachedAlerts(
+            memoryCache.alerts.map((item) => (item.id === id ? { ...item, status } : item)),
+        );
+    }
+    return updated;
 }
 
 export async function listCommunicationsAnnouncements() {
-    if (useMockAdmin) return mockAnnouncements.map((announcement) => ({ ...announcement }));
+    let result;
+    if (useMockAdmin) {
+        result = mockAnnouncements.map((announcement) => ({ ...announcement }));
+    } else {
+        const { data, error } = await supabase
+            .from("announcements")
+            .select("*, creator:profiles!announcements_created_by_fkey(name)")
+            .order("created_at", { ascending: false });
+        if (error) throw error;
 
-    const { data, error } = await supabase
-        .from("announcements")
-        .select("*, creator:profiles!announcements_created_by_fkey(name)")
-        .order("created_at", { ascending: false });
-    if (error) throw error;
+        const targets = await loadTargets(
+            "announcement_targets",
+            "announcement_id",
+            data.map(({ id }) => id),
+        );
+        result = data.map((row) => mapAnnouncement(row, targets[row.id] || []));
+    }
 
-    const targets = await loadTargets(
-        "announcement_targets",
-        "announcement_id",
-        data.map(({ id }) => id),
-    );
-    return data.map((row) => mapAnnouncement(row, targets[row.id] || []));
+    setCachedAnnouncements(result);
+    return result;
 }
 
 export async function saveCommunicationAnnouncement(input, id = null) {
@@ -289,7 +421,7 @@ export async function saveCommunicationAnnouncement(input, id = null) {
             affectedAreas: input.affectedAreas,
             attachmentUrl: input.attachmentUrl?.trim() || "",
             source: input.source.trim(),
-            publishedAt: input.publishedAt || null,
+            publishedAt: input.publishedAt || (input.status === "published" ? new Date().toISOString() : null),
             status: input.status || "draft",
             issuingAdministrator: adminName,
         };
@@ -297,7 +429,13 @@ export async function saveCommunicationAnnouncement(input, id = null) {
         if (index >= 0) mockAnnouncements[index] = announcement;
         else mockAnnouncements.unshift(announcement);
         await recordAudit(id ? "announcement_edit" : "announcement_create", "announcement", announcement.id, {});
-        return { ...announcement };
+        const saved = { ...announcement };
+        setCachedAnnouncements(
+            memoryCache.announcements
+                ? [saved, ...memoryCache.announcements.filter((item) => item.id !== saved.id)]
+                : [saved],
+        );
+        return saved;
     }
 
     const { user, name } = await getAdminProfile();
@@ -308,7 +446,11 @@ export async function saveCommunicationAnnouncement(input, id = null) {
         content: input.content.trim(),
         attachment_url: input.attachmentUrl?.trim() || null,
         source: input.source.trim(),
-        published_at: input.publishedAt ? new Date(input.publishedAt).toISOString() : null,
+        published_at: input.publishedAt
+            ? new Date(input.publishedAt).toISOString()
+            : input.status === "published"
+            ? new Date().toISOString()
+            : null,
         status: input.status || "draft",
         created_by: user.id,
         updated_at: new Date().toISOString(),
@@ -324,7 +466,13 @@ export async function saveCommunicationAnnouncement(input, id = null) {
         affectedAreas: input.affectedAreas,
         administrator: name,
     });
-    return mapAnnouncement(data, input.affectedAreas);
+    const saved = mapAnnouncement(data, input.affectedAreas);
+    setCachedAnnouncements(
+        memoryCache.announcements
+            ? [saved, ...memoryCache.announcements.filter((item) => item.id !== saved.id)]
+            : [saved],
+    );
+    return saved;
 }
 
 export async function updateCommunicationAnnouncementStatus(id, status) {
@@ -336,7 +484,13 @@ export async function updateCommunicationAnnouncementStatus(id, status) {
             announcement.publishedAt = new Date().toISOString();
         }
         await recordAudit(`announcement_${status}`, "announcement", id, {});
-        return { ...announcement };
+        const updated = { ...announcement };
+        if (memoryCache.announcements) {
+            setCachedAnnouncements(
+                memoryCache.announcements.map((item) => (item.id === id ? { ...item, status } : item)),
+            );
+        }
+        return updated;
     }
 
     await getAdminProfile();
@@ -362,21 +516,29 @@ export async function updateCommunicationAnnouncementStatus(id, status) {
         .single();
     if (error) throw error;
     await recordAudit(`announcement_${status}`, "announcement", id, {});
-    return mapAnnouncement(data);
+    const updated = mapAnnouncement(data);
+    if (memoryCache.announcements) {
+        setCachedAnnouncements(
+            memoryCache.announcements.map((item) => (item.id === id ? { ...item, status } : item)),
+        );
+    }
+    return updated;
 }
 
 export function subscribeToCommunications(onChange) {
     if (useMockAdmin) return () => {};
 
+    const throttledChange = throttle(onChange, 3000);
+
     const channel = supabase
         .channel("admin-communications")
-        .on("postgres_changes", { event: "*", schema: "public", table: "alerts" }, onChange)
-        .on("postgres_changes", { event: "*", schema: "public", table: "announcements" }, onChange)
+        .on("postgres_changes", { event: "*", schema: "public", table: "alerts" }, throttledChange)
+        .on("postgres_changes", { event: "*", schema: "public", table: "announcements" }, throttledChange)
         .subscribe();
 
-    const timer = window.setInterval(onChange, 30000);
+    const timer = window.setInterval(throttledChange, 30000);
     const handleVisibility = () => {
-        if (document.visibilityState === "visible") onChange();
+        if (document.visibilityState === "visible") throttledChange();
     };
     document.addEventListener("visibilitychange", handleVisibility);
 

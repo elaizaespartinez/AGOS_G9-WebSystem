@@ -19,6 +19,17 @@ const mapManualAnnouncements = (items) =>
         isManual: true,
     }));
 
+/** Map admin alert severity to flood-icon severity key */
+const alertSeverityToIconSeverity = (severity) => {
+    switch (String(severity).toLowerCase()) {
+        case "evacuate": return "high";
+        case "affected": return "moderate";
+        case "monitor": return "low";
+        case "safe": return "safe";
+        default: return "low";
+    }
+};
+
 const getAnnouncements = async () => {
     const { announcements, alerts } = await listPublicCommunications();
     const isMockMode = import.meta.env.VITE_USE_MOCK_ADMIN !== "false";
@@ -29,15 +40,22 @@ const getAnnouncements = async () => {
     return {
         ...baseData,
         manualAnnouncements: mapManualAnnouncements(announcements),
-        advisories: [
-            ...alerts.map((alert) => ({
-                id: alert.id,
-                type: "alert",
-                severity: alert.severity,
-                title: alert.title,
-                text: alert.description,
-            })),
-        ],
+        /** Active alerts shown in their own top-level section */
+        activeAlerts: alerts.map((alert) => ({
+            id: alert.id,
+            type: "flood",
+            severity: alertSeverityToIconSeverity(alert.severity),
+            rawSeverity: alert.severity,
+            title: alert.title,
+            text: alert.description,
+            startsAt: alert.startsAt,
+            source: alert.source,
+        })),
+        /**
+         * Advisories no longer include alerts — the Advisory category block
+         * now shows only announcements with category "Advisory".
+         */
+        advisories: [],
     };
 };
 

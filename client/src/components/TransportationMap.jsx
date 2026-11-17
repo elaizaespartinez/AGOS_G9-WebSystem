@@ -51,6 +51,86 @@ const routeColors = {
     evacuate: "#dc2626",
 };
 
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_PREFIX = "transport_routes_";
+
+function getCacheKey(position) {
+    const lat = Number(position[0]).toFixed(3);
+    const lng = Number(position[1]).toFixed(3);
+    return `${lat},${lng}`;
+}
+
+function saveSortedCache(position, destinations) {
+    if (typeof sessionStorage === "undefined") return;
+    try {
+        const key = getCacheKey(position);
+        const altKey = `${Number(position[0]).toFixed(3)}_${Number(position[1]).toFixed(3)}`;
+        const payload = JSON.stringify({
+            timestamp: Date.now(),
+            position,
+            destinations,
+            data: destinations,
+        });
+        sessionStorage.setItem(key, payload);
+        sessionStorage.setItem(altKey, payload);
+        sessionStorage.setItem(`${CACHE_PREFIX}${key}`, payload);
+        sessionStorage.setItem(`transport_destinations_${altKey}`, payload);
+        sessionStorage.setItem("transport_last_pos_key", key);
+    } catch {
+        // Ignore potential sessionStorage quota errors
+    }
+}
+
+function getCachedSorted(position) {
+    if (typeof sessionStorage === "undefined") return null;
+    try {
+        const key = getCacheKey(position);
+        const altKey = `${Number(position[0]).toFixed(3)}_${Number(position[1]).toFixed(3)}`;
+        const raw =
+            sessionStorage.getItem(key) ||
+            sessionStorage.getItem(altKey) ||
+            sessionStorage.getItem(`${CACHE_PREFIX}${key}`) ||
+            sessionStorage.getItem(`transport_destinations_${altKey}`);
+        if (!raw) return null;
+        const entry = JSON.parse(raw);
+        if (!entry || Date.now() - entry.timestamp > CACHE_TTL_MS) {
+            sessionStorage.removeItem(key);
+            sessionStorage.removeItem(altKey);
+            return null;
+        }
+        return entry.destinations || entry.data || null;
+    } catch {
+        return null;
+    }
+}
+
+function getMountCache() {
+    if (typeof sessionStorage === "undefined") return null;
+    try {
+        const lastKey = sessionStorage.getItem("transport_last_pos_key");
+        if (lastKey) {
+            const raw = sessionStorage.getItem(lastKey) || sessionStorage.getItem(`${CACHE_PREFIX}${lastKey}`);
+            if (raw) {
+                const entry = JSON.parse(raw);
+                if (entry && Date.now() - entry.timestamp <= CACHE_TTL_MS) {
+                    return entry.destinations || entry.data || null;
+                }
+            }
+        }
+        for (let i = 0; i < sessionStorage.length; i++) {
+            const k = sessionStorage.key(i);
+            if (!k) continue;
+            try {
+                const entry = JSON.parse(sessionStorage.getItem(k));
+                if (entry && entry.timestamp && Date.now() - entry.timestamp <= CACHE_TTL_MS && (entry.destinations || entry.data)) {
+                    return entry.destinations || entry.data;
+                }
+            } catch {}
+        }
+    } catch {}
+    return null;
+}
+
 function createFloodReportPopup(report) {
     const root = document.createElement("div");
     const addField = (label, value) => {
@@ -154,6 +234,7 @@ function TransportationMap({
     const localRouteLayers = useRef(new Map());
     const locationUpdateTimer = useRef(null);
     const lastRoutedPosition = useRef(null);
+    const isFirstFix = useRef(true);
     const [locationStatus, setLocationStatus] = useState("");
 
     useEffect(() => {
@@ -167,6 +248,21 @@ function TransportationMap({
         const data = await response.json();
         if (!response.ok || data.code !== "Ok" || !data.routes?.[0]) throw new Error(`No road route was found to ${destination.name}.`);
         return data.routes[0];
+    }
+
+    async function fetchRoadTable(position, signal) {
+        const [latitude, longitude] = position;
+        const coordinates = [
+            `${longitude},${latitude}`,
+            ...evacuationDestinations.map((d) => `${d.position[1]},${d.position[0]}`),
+        ].join(";");
+        const response = await fetch(
+            `https://router.project-osrm.org/table/v1/driving/${coordinates}?sources=0&annotations=duration,distance`,
+            { signal }
+        );
+        const data = await response.json();
+        if (!response.ok || data.code !== "Ok") throw new Error("Unable to fetch road travel time table.");
+        return data;
     }
 
     function clearRoute() {
@@ -197,53 +293,62 @@ function TransportationMap({
         routeRequestId.current = requestId;
 
         try {
-            const routeResults = await Promise.all(evacuationDestinations.map(async (destination) => {
-                try {
-                    return {
-                        destination,
-                        route: await fetchRoadRoute(position, destination, controller.signal),
-                    };
-                } catch (error) {
-                    if (error.name === "AbortError") throw error;
-                    return { destination, route: null };
-                }
-            }));
+            let sortedDestinations = getCachedSorted(position);
+
+            if (!sortedDestinations) {
+                const tableData = await fetchRoadTable(position, controller.signal);
+                if (!isCurrentRouteRequest(requestId)) return;
+
+                const destinationsWithRoad = evacuationDestinations.map((destination, index) => ({
+                    ...destination,
+                    routeDistance: tableData.distances?.[0]?.[index + 1] ?? null,
+                    routeDuration: tableData.durations?.[0]?.[index + 1] ?? null,
+                }));
+
+                sortedDestinations = [...destinationsWithRoad].sort((first, second) => {
+                    if (first.routeDuration === null) return 1;
+                    if (second.routeDuration === null) return -1;
+                    return (
+                        first.routeDuration - second.routeDuration ||
+                        (first.routeDistance ?? 0) - (second.routeDistance ?? 0)
+                    );
+                });
+
+                saveSortedCache(position, sortedDestinations);
+            }
+
             if (!isCurrentRouteRequest(requestId)) return;
 
-            routeData.current = new Map(
-                routeResults
-                    .filter(({ route }) => route)
-                    .map(({ destination, route }) => [destination.id, route]),
-            );
-            const sortedRoutes = routeResults
-                .filter(({ route }) => route)
-                .sort((first, second) => first.route.duration - second.route.duration || first.route.distance - second.route.distance);
-            onDestinationsSorted(routeResults
-                .sort((first, second) => {
-                    if (!first.route) return 1;
-                    if (!second.route) return -1;
-                    return first.route.duration - second.route.duration || first.route.distance - second.route.distance;
-                })
-                .map(({ destination, route }) => ({
-                    ...destination,
-                    routeDistance: route?.distance ?? null,
-                    routeDuration: route?.duration ?? null,
-                })));
+            onDestinationsSorted?.(sortedDestinations);
 
             const selected = destinationId
                 ? evacuationDestinations.find((destination) => destination.id === destinationId)
-                : sortedRoutes[0]?.destination;
-            const selectedRoute = selected && routeData.current.get(selected.id);
-            if (!selected || !selectedRoute) {
+                : sortedDestinations.find((d) => d.routeDuration !== null) || sortedDestinations[0];
+
+            if (!selected) {
                 clearRoute();
                 onRouteStatusChange?.({ status: "Safe", duration: null, report: null });
                 return;
             }
+
             if (selectedDestination.current !== selected.id) {
                 selectedDestination.current = selected.id;
                 onDestinationSelected(selected.id);
             }
             destinationMarkers.current.get(selected.id)?.openPopup();
+
+            const hasMoved = !lastRoutedPosition.current || distanceBetweenMeters(lastRoutedPosition.current, position) >= 30;
+            if (hasMoved) {
+                routeData.current.clear();
+            }
+
+            let selectedRoute = routeData.current.get(selected.id);
+            if (!selectedRoute) {
+                selectedRoute = await fetchRoadRoute(position, selected, controller.signal);
+                if (!isCurrentRouteRequest(requestId)) return;
+                routeData.current.set(selected.id, selectedRoute);
+            }
+
             drawRoute(selectedRoute);
             updateRouteStatus(selectedRoute);
             lastRoutedPosition.current = position;
@@ -261,18 +366,15 @@ function TransportationMap({
         if (userPosition.current) refreshRoutes(userPosition.current, destination.id);
     }
 
-    function distanceBetweenMeters(first, second) {
-        const earthRadius = 6371000;
-        const toRadians = (degrees) => degrees * Math.PI / 180;
-        const latitudeDelta = toRadians(second[0] - first[0]);
-        const longitudeDelta = toRadians(second[1] - first[1]);
-        const latitude = toRadians((first[0] + second[0]) / 2);
-        return Math.sqrt(latitudeDelta ** 2 + (Math.cos(latitude) * longitudeDelta) ** 2) * earthRadius;
-    }
-
     function scheduleRouteRefresh(position) {
         if (lastRoutedPosition.current && distanceBetweenMeters(lastRoutedPosition.current, position) < 30) return;
         window.clearTimeout(locationUpdateTimer.current);
+        if (isFirstFix.current) {
+            isFirstFix.current = false;
+            setLocationStatus("Sorting by road travel time...");
+            refreshRoutes(position);
+            return;
+        }
         locationUpdateTimer.current = window.setTimeout(() => {
             setLocationStatus("Sorting by road travel time...");
             refreshRoutes(position);
@@ -297,14 +399,28 @@ function TransportationMap({
                 accuracyCircle.current = L.circle(position, { radius: coords.accuracy, color: "#1687d9", fillColor: "#1687d9", fillOpacity: 0.15, weight: 1 }).addTo(map);
                 map.setView(position, Math.max(map.getZoom(), 12));
                 setLocationStatus("Location found.");
+
+                const straightSorted = evacuationDestinations
+                    .map((destination) => ({
+                        ...destination,
+                        routeDistance: distanceBetweenMeters(position, destination.position),
+                        routeDuration: null,
+                    }))
+                    .sort((first, second) => (first.routeDistance ?? 0) - (second.routeDistance ?? 0));
+                onDestinationsSorted?.(straightSorted);
+
                 scheduleRouteRefresh(position);
             },
             (error) => setLocationStatus(error.code === error.PERMISSION_DENIED ? "Location permission was denied." : "Your location is currently unavailable."),
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
         );
     }
 
     useEffect(() => {
+        const cached = getMountCache();
+        if (cached) {
+            onDestinationsSorted?.(cached);
+        }
         const map = L.map(mapElement.current, { center: [13.772, 121.06], zoom: 14, zoomControl: false });
         mapInstance.current = map;
         L.control.zoom({ position: "bottomright" }).addTo(map);
@@ -394,7 +510,7 @@ function TransportationMap({
     }, [floodReports]);
 
     return (
-        <div className="relative h-full min-h-[36rem]">
+        <div className="relative h-full min-h-0">
             <div ref={mapElement} className="transport-map" aria-label="Interactive Batangas transportation map" />
             <button type="button" onClick={locateUser} className="transport-location-button" disabled={locationStatus === "Finding your location..."}>
                 <LocateFixed size={15} /> {locationStatus === "Finding your location..." ? "Locating..." : "My location"}

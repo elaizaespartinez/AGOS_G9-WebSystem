@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import FloodMapLeaflet from "../components/FloodMapLeaflet";
+import StatCard from "../components/StatCard";
 import { evacuationDestinations } from "../components/TransportationMap";
 import {
     listFloodReports,
@@ -146,56 +147,66 @@ function FloodMap() {
         normal: "bg-safe",
     };
     return (
-        <main className="mx-auto max-w-[var(--container-agos)] px-4 pb-10 pt-6">
-            <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-                <div className="h-[min(70vh,38rem)] min-h-[28rem]">
-                    <FloodMapLeaflet
-                        weatherData={weather ? [weather] : []}
-                        facilityData={evacuationDestinations}
-                        floodReports={floodReports}
-                        onSatelliteDateChange={setSatelliteDate}
-                        onNoahVisibilityChange={setNoahVisible}
-                    />
+        <div className="mx-auto max-w-[var(--container-agos)] px-4 py-3 lg:h-[calc(100dvh-5rem)] lg:overflow-hidden">
+            <section className="grid gap-4 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                <div className="flex flex-col gap-2 lg:h-full lg:min-h-0">
+                    <div className="h-[50dvh] min-h-0 flex-1 lg:h-full">
+                        <FloodMapLeaflet
+                            weatherData={weather ? [weather] : []}
+                            facilityData={evacuationDestinations}
+                            floodReports={floodReports}
+                            onSatelliteDateChange={setSatelliteDate}
+                            onNoahVisibilityChange={setNoahVisible}
+                        />
+                    </div>
+                    <div className="flood-page-legend-strip">
+                        <span className="font-bold text-text">Map data:</span>
+                        <span className="flood-page-legend-item"><span className="flood-legend-admin" /> Official reports</span>
+                        <span className="flood-page-legend-item"><span className="flood-legend-satellite" /> Satellite flood</span>
+                        <span className="flood-page-legend-item"><i className="bg-risk-high" /> Evacuate</span>
+                        <span className="flood-page-legend-item"><i className="bg-risk-moderate" /> Alert</span>
+                        <span className="flood-page-legend-item"><i className="bg-risk-low" /> Monitor</span>
+                        <span className="flood-page-legend-item"><i className="bg-safe" /> Normal</span>
+                        <span className="flood-page-legend-item"><i className="bg-[#2e9eac]" /> Evacuation center</span>
+                    </div>
                 </div>
-                <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-3 lg:h-full lg:overflow-y-auto flood-sidebar-scroll lg:pr-1">
+                    <div className="grid grid-cols-2 gap-2.5">
                         {statusCards.map(([label, key, value]) => (
-                            <article
+                            <StatCard
                                 key={label}
-                                className={`rounded-xl border-l-4 bg-card p-4 shadow-card ${statusCardClasses[key]}`}
-                            >
-                                <div className={`mb-3 h-2.5 w-2.5 rounded-full ${statusDotClasses[key]}`} />
-                                <h2 className="text-xs font-semibold text-text/70">{label}</h2>
-                                <p className="mt-1 text-2xl font-extrabold text-text">{value ?? "-"}</p>
-                                <span className="flood-stat-note mt-1">{statusCounts ? "Estimated" : "No data"}</span>
-                            </article>
+                                variant={key}
+                                title={label}
+                                value={value}
+                                note={statusCounts ? "Estimated" : "No data"}
+                            />
                         ))}
                     </div>
 
-                    <article className="rounded-xl bg-card p-4 shadow-card">
+                    <article className="rounded-xl bg-card p-3 shadow-card">
                         <header className="flex items-start justify-between gap-3">
                             <div>
-                                <p className="text-xs font-semibold uppercase tracking-wide text-text/50">Flood reports</p>
-                                <h2 className="mt-1 text-base font-bold text-text">Official status</h2>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-text/50">Flood reports</p>
+                                <h2 className="mt-0.5 text-sm font-bold text-text">Official status</h2>
                             </div>
-                            <span className={`rounded-full px-3 py-1 text-xs font-bold ${officialStatusKey ? officialStatusClasses[officialStatusKey] : "bg-slate-100 text-slate-500"}`}>
+                            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${officialStatusKey ? officialStatusClasses[officialStatusKey] : "bg-slate-100 text-slate-500"}`}>
                                 {officialLevel ? `${officialLevel.icon} ${officialLevel.label}` : "No data"}
                             </span>
                         </header>
-                        <div className="mt-4 divide-y divide-slate-100 text-sm">
-                            <p className="flex justify-between gap-3 py-2 first:pt-0"><span className="text-text/60">Active reports</span><strong>{reportsLoaded ? floodReports.length : "No data"}</strong></p>
-                            <p className="flex justify-between gap-3 py-2"><span className="text-text/60">Estimated rainfall</span><strong>{Number.isFinite(rainfall) ? `${rainfall.toFixed(1)} mm/hr` : "No data"}</strong></p>
-                            <p className="flex justify-between gap-3 py-2 last:pb-0"><span className="text-text/60">Satellite data</span><strong className="text-right">{satelliteDate ? `For ${satelliteDate}` : "No data"}</strong></p>
+                        <div className="mt-2.5 divide-y divide-slate-100 text-xs">
+                            <p className="flex justify-between gap-3 py-1.5 first:pt-0"><span className="text-text/60">Active reports</span><strong>{reportsLoaded ? floodReports.length : "No data"}</strong></p>
+                            <p className="flex justify-between gap-3 py-1.5"><span className="text-text/60">Estimated rainfall</span><strong>{Number.isFinite(rainfall) ? `${rainfall.toFixed(1)} mm/hr` : "No data"}</strong></p>
+                            <p className="flex justify-between gap-3 py-1.5 last:pb-0"><span className="text-text/60">Satellite data</span><strong className="text-right">{satelliteDate ? `For ${satelliteDate}` : "No data"}</strong></p>
                         </div>
-                        <div className="mt-3">
-                            <p className="flood-estimate-note">Rainfall is estimated; satellite data is separate from official status.</p>
+                        <div className="mt-2">
+                            <p className="flood-estimate-note text-[10px]">Rainfall is estimated; satellite data is separate from official status.</p>
                         </div>
                     </article>
-                    {reportsLoaded && !floodReports.length && <p className="flood-empty-state">No active flood reports</p>}
-                    {reportsError && <p className="flood-weather-error">{reportsError}</p>}
+                    {reportsLoaded && !floodReports.length && <p className="flood-empty-state text-xs py-1.5 px-2.5">No active flood reports</p>}
+                    {reportsError && <p className="flood-weather-error text-xs">{reportsError}</p>}
                     <article className="flood-weather-card">
                         <div className="flood-weather-heading">
-                            <h2>Live weather</h2>
+                            <h2 className="text-sm font-bold">Live weather</h2>
                             <span>{weatherLoading ? "Loading..." : weather ? "Batangas City" : "Unavailable"}</span>
                         </div>
                         {weather && (
@@ -203,14 +214,13 @@ function FloodMap() {
                                 <div><strong>{weather.peakRainfall.toFixed(1)} mm/hr</strong><span>Peak estimated rainfall</span></div>
                             </div>
                         )}
-                        {weatherError && <p className="flood-weather-error">{weatherError}</p>}
-                        {!weatherLoading && weather && <p className="flood-weather-updated">Last updated: {getTimePht(weather.lastUpdated)} PHT</p>}
+                        {weatherError && <p className="flood-weather-error text-xs">{weatherError}</p>}
+                        {!weatherLoading && weather && <p className="flood-weather-updated text-[11px]">Last updated: {getTimePht(weather.lastUpdated)} PHT</p>}
                     </article>
                 </div>
             </section>
-
-        </main>
-    )
+        </div>
+    );
 }
 
 export default FloodMap;
