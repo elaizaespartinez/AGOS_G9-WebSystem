@@ -31,6 +31,10 @@ const dotClasses = {
     affected: "bg-risk-moderate",
     evacuate: "bg-risk-high",
 };
+// Keeps the last dashboard data so returning to this page shows it instantly
+// while fresh data loads quietly in the background.
+let cachedOverview = null;
+
 const actionLabels = {
     report_pending: "Report submitted",
     report_verified: "Report verified",
@@ -55,14 +59,16 @@ function formatAction(action) {
 }
 
 export default function AdminHome() {
-    const [overview, setOverview] = useState(null);
+    const [overview, setOverview] = useState(cachedOverview);
     const [error, setError] = useState("");
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!cachedOverview);
+    const [refreshing, setRefreshing] = useState(false);
 
     const load = () => {
-        setLoading(true);
+        setRefreshing(true);
         getOverview()
             .then((data) => {
+                cachedOverview = data;
                 setOverview(data);
                 setError("");
             })
@@ -70,7 +76,10 @@ export default function AdminHome() {
                 console.error("Unable to load dashboard overview.", loadError);
                 setError("Live dashboard data is temporarily unavailable.");
             })
-            .finally(() => setLoading(false));
+            .finally(() => {
+                setLoading(false);
+                setRefreshing(false);
+            });
     };
 
     useEffect(() => {
@@ -141,7 +150,7 @@ export default function AdminHome() {
                 title="Operations overview"
                 description="Monitor community safety and manage public updates from one operational view."
                 onRefresh={load}
-                refreshing={loading}
+                refreshing={refreshing}
                 actions={
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1.5 text-xs font-bold text-green-800">
                         <span className="h-1.5 w-1.5 rounded-full bg-safe" /> Live data connected

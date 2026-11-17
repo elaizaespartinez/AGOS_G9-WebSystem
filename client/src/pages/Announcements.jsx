@@ -34,8 +34,8 @@ const manualAnnouncementIcons = {
 
 const categoryConfig = [
     { name: "Weather Update", icon: CloudSun },
-    { name: "River Monitoring", icon: Waves },
-    { name: "Coastal Monitoring", icon: Waves },
+    { name: "River Monitoring", icon: Waves, monitoringId: "river-monitoring" },
+    { name: "Coastal Monitoring", icon: Waves, monitoringId: "coastal-monitoring" },
     { name: "Advisory", icon: BellRing },
     { name: "General Announcement", icon: Megaphone },
 ];
@@ -76,6 +76,10 @@ function computeAsOf(data) {
         const t = alert.startsAt ? new Date(alert.startsAt).getTime() : 0;
         if (!Number.isNaN(t) && t > newest) newest = t;
     }
+    for (const reading of data.monitoring || []) {
+        const t = reading.updatedAt ? new Date(reading.updatedAt).getTime() : 0;
+        if (!Number.isNaN(t) && t > newest) newest = t;
+    }
     for (const ann of data.manualAnnouncements || []) {
         const t = ann.publishedAt ? new Date(ann.publishedAt).getTime() : 0;
         if (!Number.isNaN(t) && t > newest) newest = t;
@@ -94,11 +98,13 @@ function ManualAnnouncementList({
     category,
     expanded,
     onToggle,
+    hideWhenEmpty = false,
 }) {
     const matching = getPublishedByCategory(announcements, category);
     const visible = expanded ? matching : matching.slice(0, 5);
 
     if (!matching.length) {
+        if (hideWhenEmpty) return null;
         return (
             <div className="rounded-lg border border-dashed border-gray-200 bg-slate-50 p-4 text-center">
                 <p className="text-xs text-text/55">
@@ -170,6 +176,58 @@ function ManualAnnouncementCard({ announcement }) {
                 </div>
             </div>
         </li>
+    );
+}
+
+const severityLabels = {
+    safe: "Safe",
+    low: "Monitor",
+    moderate: "Affected",
+    high: "Danger",
+};
+
+function AutomatedMonitoringCard({ reading }) {
+    const { type, severity, title, text, details, source, updatedAt } = reading;
+    return (
+        <article className="rounded-xl border border-gray-100 bg-background/60 p-4">
+            <div className="flex items-start gap-3">
+                <img
+                    src={getAnnouncementIcon(type, severity)}
+                    alt={`${severity} ${type} status`}
+                    className="h-11 w-11 shrink-0 object-contain"
+                />
+                <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                        <p className="font-bold text-secondary">{title}</p>
+                        <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold text-secondary">
+                            {severityLabels[severity] || severity}
+                        </span>
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-text/75">
+                        {text}
+                    </p>
+                    {details && (
+                        <p className="mt-1 text-[11px] leading-relaxed text-text/55">
+                            {details}
+                        </p>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-text/55">
+                        {source && (
+                            <span className="inline-flex items-center gap-1">
+                                <Radio size={12} aria-hidden="true" />
+                                {source}
+                            </span>
+                        )}
+                        {updatedAt && (
+                            <span className="inline-flex items-center gap-1">
+                                <Clock3 size={12} aria-hidden="true" />
+                                {formatPht(updatedAt) || "—"}
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </article>
     );
 }
 
@@ -295,9 +353,12 @@ function Announcements() {
 
         loadAnnouncements();
         const unsubscribe = subscribeToPublicCommunications(loadAnnouncements);
+        // Automated monitoring refreshes on its own, even without admin activity.
+        const monitoringTimer = window.setInterval(loadAnnouncements, 5 * 60 * 1000);
 
         return () => {
             isMounted = false;
+            window.clearInterval(monitoringTimer);
             unsubscribe();
         };
     }, []);
@@ -507,35 +568,19 @@ function Announcements() {
                     icon={Radio}
                     eyebrow="Automated monitoring"
                     title="River, coastal, and flood conditions"
-                    description="Monitoring observations are separate from manually published announcements."
+                    description="Live readings update automatically. They are separate from manually published announcements."
                 />
                 {announcements.monitoring.length ? (
                     <div className="grid gap-3 md:grid-cols-3">
-                        {announcements.monitoring.map(
-                            ({ id, type, severity, text }) => (
-                                <article
-                                    key={id}
-                                    className="rounded-xl border border-gray-100 bg-background/60 p-4"
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <img
-                                            src={getAnnouncementIcon(
-                                                type,
-                                                severity,
-                                            )}
-                                            alt={`${severity} ${type} status`}
-                                            className="h-11 w-11 shrink-0 object-contain"
-                                        />
-                                        <p className="text-xs leading-relaxed text-text/75">
-                                            {text}
-                                        </p>
-                                    </div>
-                                </article>
-                            ),
-                        )}
+                        {announcements.monitoring.map((reading) => (
+                            <AutomatedMonitoringCard
+                                key={reading.id}
+                                reading={reading}
+                            />
+                        ))}
                     </div>
                 ) : (
-                    <EmptyState message="No monitoring updates are available." />
+                    <EmptyState message="Automated monitoring is temporarily unavailable. It will retry automatically." />
                 )}
             </section>
 
@@ -556,7 +601,11 @@ function Announcements() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                    {categoryConfig.map(({ name, icon: Icon }, index) => (
+                    {categoryConfig.map(({ name, icon: Icon, monitoringId }, index) => {
+                        const reading = monitoringId
+                            ? announcements.monitoring.find(({ id }) => id === monitoringId)
+                            : null;
+                        return (
                         <article
                             key={name}
                             className={`rounded-2xl bg-white p-5 shadow-card ${
@@ -570,15 +619,28 @@ function Announcements() {
                                 eyebrow="Category"
                                 title={name}
                             />
+                            {monitoringId && (
+                                reading ? (
+                                    <div className="mb-3">
+                                        <AutomatedMonitoringCard reading={reading} />
+                                    </div>
+                                ) : (
+                                    <p className="mb-3 text-xs text-text/55">
+                                        Automated reading is temporarily unavailable.
+                                    </p>
+                                )
+                            )}
                             {/* Advisory category: show only manual announcements, not alerts */}
                             <ManualAnnouncementList
                                 announcements={announcements.manualAnnouncements}
                                 category={name}
                                 expanded={expandedCategories[name]}
                                 onToggle={toggleCategory}
+                                hideWhenEmpty={Boolean(monitoringId)}
                             />
                         </article>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 {!announcements.manualAnnouncements.some(

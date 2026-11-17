@@ -41,32 +41,46 @@ const risks = ["safe", "monitor", "affected", "evacuate"];
 const fieldClass =
     "mt-1 min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary";
 
+// Last loaded reports per filter set, so the page shows instantly on return
+// and refreshes quietly in the background.
+const reportsCache = new Map();
+const getCacheKey = (filters) => JSON.stringify(filters);
+
 function AdminReports() {
     const [searchParams, setSearchParams] = useSearchParams();
-    const [reports, setReports] = useState([]);
-    const [selectedId, setSelectedId] = useState(null);
-    const [filters, setFilters] = useState({
+    const initialFilters = {
         type: "",
         barangay: "",
         date: "",
         status: searchParams.get("status") || "all",
         risk: "",
-    });
+    };
+    const initialCached = reportsCache.get(getCacheKey(initialFilters));
+    const [reports, setReports] = useState(initialCached || []);
+    const [selectedId, setSelectedId] = useState(initialCached?.[0]?.id || null);
+    const [filters, setFilters] = useState(initialFilters);
     const [rejectReason, setRejectReason] = useState("");
     const [assessedSeverity, setAssessedSeverity] = useState("monitor");
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!initialCached);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState("");
     const [toast, setToast] = useState("");
     const [lastUpdated, setLastUpdated] = useState(null);
 
     const loadReports = () => {
-        setLoading(true);
+        const cacheKey = getCacheKey(filters);
+        const cached = reportsCache.get(cacheKey);
+        // Only show the full-page spinner when there is nothing to show yet.
+        if (cached) setReports(cached);
+        else setLoading(true);
+        setRefreshing(true);
         setError("");
         listReports({
             ...filters,
             status: filters.status === "all" ? "" : filters.status,
         })
             .then((data) => {
+                reportsCache.set(cacheKey, data);
                 setReports(data);
                 setSelectedId((current) =>
                     data.some((report) => report.id === current)
@@ -77,7 +91,10 @@ function AdminReports() {
                 setLastUpdated(new Date());
             })
             .catch((loadError) => setError(loadError.message))
-            .finally(() => setLoading(false));
+            .finally(() => {
+                setLoading(false);
+                setRefreshing(false);
+            });
     };
 
     useEffect(() => {
@@ -153,7 +170,7 @@ function AdminReports() {
                 title="Community reports"
                 description="Review incoming reports without treating one unverified claim as a major alert."
                 onRefresh={loadReports}
-                refreshing={loading}
+                refreshing={refreshing}
             />
             {lastUpdated && (
                 <p className="text-right text-[11px] text-text/50">

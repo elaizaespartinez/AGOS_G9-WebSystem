@@ -19,7 +19,6 @@ function Transportation() {
     const [floodReports, setFloodReports] = useState([]);
     const [routes, setRoutes] = useState([]);
     const [selectedLocalRouteId, setSelectedLocalRouteId] = useState(null);
-    const [showLocalRoutes, setShowLocalRoutes] = useState(true);
     const [routeStatus, setRouteStatus] = useState({
         status: "Safe",
         duration: null,
@@ -84,8 +83,6 @@ function Transportation() {
                     onRouteStatusChange={setRouteStatus}
                     localRoutes={effectiveRoutes}
                     requestedLocalRouteId={selectedLocalRouteId}
-                    onLocalRouteSelected={setSelectedLocalRouteId}
-                    showLocalRoutes={showLocalRoutes}
                 />
                 <div className="transport-legend">
                     <span><i className="transport-dot suspended" />Suspended</span>
@@ -98,9 +95,6 @@ function Transportation() {
                 <article className="transport-card">
                     <div className="transport-card-top">
                         <header className="transport-card-header"><h2>Available Routes</h2><MapPinned size={18} /></header>
-                        <button type="button" className="transport-layer-toggle" onClick={() => setShowLocalRoutes((current) => !current)}>
-                            {showLocalRoutes ? "Hide local route layer" : "Show local route layer"}
-                        </button>
                         <p className="transport-list-caption">{locationKnown ? "Nearest evacuation centers first" : "Evacuation centers"}</p>
                     </div>
                     <div className="transport-card-middle">
@@ -130,7 +124,7 @@ function Transportation() {
                             <ol className="transport-local-route-list">
                                 {effectiveRoutes.map((route) => (
                                     <li key={route.id} className={selectedLocalRouteId === route.id ? "transport-local-route-selected" : ""}>
-                                        <button type="button" className="transport-local-route-button" onClick={() => setSelectedLocalRouteId(route.id)}>
+                                        <button type="button" className="transport-local-route-button" onClick={() => setSelectedLocalRouteId((current) => (current === route.id ? null : route.id))}>
                                             <span className="transport-local-route-heading"><strong>{route.code}</strong><span className={`transport-route-pill ${route.effectiveStatus}`}>{route.effectiveStatus}</span></span>
                                             <span>{route.name}</span>
                                             <small>{route.routeType} · {route.geometry?.length > 1 ? route.effectiveReason : "Path not mapped yet"}</small>

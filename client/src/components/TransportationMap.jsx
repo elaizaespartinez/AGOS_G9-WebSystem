@@ -215,8 +215,6 @@ function TransportationMap({
     onRouteStatusChange,
     localRoutes = [],
     requestedLocalRouteId,
-    onLocalRouteSelected,
-    showLocalRoutes = true,
 }) {
     const mapElement = useRef(null);
     const mapInstance = useRef(null);
@@ -467,28 +465,21 @@ function TransportationMap({
         if (!mapInstance.current) return;
         localRouteLayers.current.forEach((layer) => layer.remove());
         localRouteLayers.current.clear();
-        if (!showLocalRoutes) return;
-        localRoutes
-            .filter((route) => route.geometry?.length > 1)
-            .forEach((route) => {
-                const line = L.polyline(route.geometry, {
-                    color: routeColors[route.effectiveStatus] || routeColors.safe,
-                    weight: 5,
-                    opacity: 0.8,
-                })
-                    .addTo(mapInstance.current)
-                    .bindPopup(createRoutePopup(route))
-                    .on("click", () => onLocalRouteSelected?.(route.id));
-                localRouteLayers.current.set(route.id, line);
-            });
-        if (requestedLocalRouteId) {
-            const selectedLine = localRouteLayers.current.get(requestedLocalRouteId);
-            if (selectedLine) {
-                selectedLine.openPopup();
-                mapInstance.current.fitBounds(selectedLine.getBounds(), { padding: [40, 40] });
-            }
-        }
-    }, [localRoutes, requestedLocalRouteId, showLocalRoutes]);
+        // Only draw a local route after it is picked from the sidebar list.
+        if (!requestedLocalRouteId) return;
+        const route = localRoutes.find((item) => item.id === requestedLocalRouteId);
+        if (!route || !(route.geometry?.length > 1)) return;
+        const line = L.polyline(route.geometry, {
+            color: routeColors[route.effectiveStatus] || routeColors.safe,
+            weight: 5,
+            opacity: 0.8,
+        })
+            .addTo(mapInstance.current)
+            .bindPopup(createRoutePopup(route));
+        localRouteLayers.current.set(route.id, line);
+        line.openPopup();
+        mapInstance.current.fitBounds(line.getBounds(), { padding: [40, 40] });
+    }, [localRoutes, requestedLocalRouteId]);
 
     useEffect(() => {
         if (!mapInstance.current) return;

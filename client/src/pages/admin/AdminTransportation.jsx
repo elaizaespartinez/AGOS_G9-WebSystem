@@ -50,21 +50,27 @@ function WaypointMap({ waypoints, onAdd }) {
     );
 }
 
+// Last loaded data, so the page shows instantly on return and refreshes
+// quietly in the background.
+let transportCache = null;
+
 export default function AdminTransportation() {
-    const [routes, setRoutes] = useState([]);
-    const [floodReports, setFloodReports] = useState([]);
+    const [routes, setRoutes] = useState(transportCache?.routes || []);
+    const [floodReports, setFloodReports] = useState(transportCache?.floodReports || []);
     const [form, setForm] = useState(emptyForm);
     const [reasons, setReasons] = useState({});
     const [filter, setFilter] = useState("all");
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!transportCache);
+    const [refreshing, setRefreshing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
 
     async function loadData() {
-        setLoading(true);
+        setRefreshing(true);
         try {
             const [routeData, reportData] = await Promise.all([listRoutes(), listFloodReports()]);
+            transportCache = { routes: routeData, floodReports: reportData };
             setRoutes(routeData);
             setFloodReports(reportData);
             setError("");
@@ -73,6 +79,7 @@ export default function AdminTransportation() {
             setError(loadError.message);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     }
 
@@ -166,7 +173,7 @@ export default function AdminTransportation() {
                 title="Transportation monitoring"
                 description="Manage local routes and publish current operating conditions."
                 onRefresh={loadData}
-                refreshing={loading}
+                refreshing={refreshing}
             />
             {error && <p role="alert" className="rounded-lg border border-risk-high/30 bg-red-50 px-4 py-3 text-sm font-semibold text-risk-high">{error}</p>}
             {notice && <p role="status" className="rounded-lg border border-safe/30 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800">{notice}</p>}

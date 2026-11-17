@@ -2,6 +2,7 @@ import {
     defaultAnnouncementsData,
     mockAnnouncementsData,
 } from "../data/announcementsData";
+import { getAutomatedMonitoring } from "./monitoringService";
 import { listPublicCommunications } from "./publicCommunicationsService";
 
 const sortPublishedAnnouncements = (items) =>
@@ -31,7 +32,10 @@ const alertSeverityToIconSeverity = (severity) => {
 };
 
 const getAnnouncements = async () => {
-    const { announcements, alerts } = await listPublicCommunications();
+    const [{ announcements, alerts }, monitoring] = await Promise.all([
+        listPublicCommunications(),
+        getAutomatedMonitoring(),
+    ]);
     const isMockMode = import.meta.env.VITE_USE_MOCK_ADMIN !== "false";
     const baseData = isMockMode
         ? mockAnnouncementsData
@@ -39,6 +43,8 @@ const getAnnouncements = async () => {
 
     return {
         ...baseData,
+        /** Live river, coastal and flood readings (no manual entry needed) */
+        monitoring,
         manualAnnouncements: mapManualAnnouncements(announcements),
         /** Active alerts shown in their own top-level section */
         activeAlerts: alerts.map((alert) => ({
