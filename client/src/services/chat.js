@@ -1,8 +1,8 @@
 import { API_URL } from "../config/api";
 
-const OFFLINE_REPLY = "I can help with floods, typhoons, earthquakes, landslides, fires, and disaster preparedness. Follow official advisories from PAGASA, PHIVOLCS, NDRRMC, and your LGU or barangay DRRM office. For urgent danger, call local emergency services first.";
+const OFFLINE_REPLY = "I can help with floods, typhoons, earthquakes, landslides, fires, and disaster preparedness.\n\n> **For urgent danger, call 911 or your local emergency hotline first.**\n\n**Official sources:** PAGASA, PHIVOLCS, NDRRMC, and your LGU or barangay DRRM office.";
 
-export async function askChat(message) {
+export async function askChat(message, history = []) {
     try {
         if (API_URL === "REPLACE_WITH_RENDER_URL") {
             throw new Error("Set API_URL in client/src/config/api.js to the deployed Render URL.");
@@ -12,7 +12,7 @@ export async function askChat(message) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 message,
-                messages: [{ role: "user", content: message }],
+                history,
             }),
         });
         const data = await response.json().catch(() => ({}));

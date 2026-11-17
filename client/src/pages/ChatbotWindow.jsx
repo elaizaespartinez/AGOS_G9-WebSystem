@@ -2,18 +2,23 @@ import { useEffect, useRef, useState } from "react";
 import { CircleAlert, SendHorizontal, MoveRight, Paperclip, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import chatbotIcon from "../assets/chatbot-icon.png";
+import ChatMarkdown from "../components/ChatMarkdown";
 import { askChat } from "../services/chat";
 import "../chatbot.css";
 
 const INITIAL_MESSAGE = {
     role: "assistant",
-    content: "Hi, I'm Agos. I can help with flood safety, disaster preparedness, evacuation planning, and other DRRM concerns. What do you need help with?",
+    content: "Hi, I'm **Agos**, your disaster preparedness assistant for Batangas City and the Philippines.\n\nAsk me about floods, typhoons, earthquakes, Taal Volcano, evacuation, or go-bags. For live flood status and routes, check the Flood Map, Transportation, and Announcements pages.",
     timestamp: new Date(),
 };
 
 const QUICK_PROMPTS = [
     "What should I prepare before heavy rain?",
     "What should I do if floodwater is rising?",
+    "Go-bag checklist for my family",
+    "What do PAGASA typhoon wind signals mean?",
+    "What should I do during an earthquake?",
+    "Taal Volcano alert levels explained",
 ];
 
 function formatTime(timestamp) {
@@ -99,7 +104,9 @@ function ChatbotWindow({ isOpen }) {
         setIsLoading(true);
 
         try {
-            const result = await askChat(text);
+            // Send earlier turns (not the new one) so Agos can follow the conversation.
+            const history = messages.map(({ role, content }) => ({ role, content }));
+            const result = await askChat(text, history);
             setMessages((currentMessages) => [
                 ...currentMessages,
                 { role: "assistant", content: result.reply, provider: result.provider, timestamp: new Date() },
@@ -132,7 +139,11 @@ function ChatbotWindow({ isOpen }) {
                     >
                         {message.role === "assistant" && <img src={chatbotIcon} alt="" className="chatbot-message-avatar" />}
                         <div>
-                            <div className="chatbot-bubble">{message.content}</div>
+                            <div className={`chatbot-bubble ${message.role === "assistant" ? "chatbot-bubble-rich" : ""}`}>
+                                {message.role === "assistant"
+                                    ? <ChatMarkdown content={message.content} />
+                                    : message.content}
+                            </div>
                             <span className="chatbot-timestamp">{formatTime(message.timestamp)}</span>
                         </div>
                         {message.role === "user" && <span className="chatbot-user-avatar"><UserRound size={14} /></span>}

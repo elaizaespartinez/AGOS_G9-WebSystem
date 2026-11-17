@@ -7,6 +7,8 @@ import { listActiveFloodReports, readFloodReports, writeFloodReports } from "./f
 const config = loadConfig();
 const MAX_BODY_LENGTH = 100000;
 const MAX_CHAT_MESSAGE_LENGTH = 500;
+const MAX_HISTORY_MESSAGES = 8;
+const MAX_HISTORY_MESSAGE_LENGTH = 1200;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 20;
 const rateLimitBuckets = new Map();
@@ -22,6 +24,37 @@ const MAX_TEXT_LENGTHS = {
     note: 1000,
     source: 160,
 };
+
+// Keeps the last few turns so Agos can answer follow-up questions.
+// History is untrusted client input: only user/assistant text is accepted,
+// it is truncated, and it must start with a user message.
+function sanitizeHistory(history) {
+    if (!Array.isArray(history)) return [];
+
+    const cleaned = history
+        .filter((item) => item
+            && ["user", "assistant"].includes(item.role)
+            && typeof item.content === "string"
+            && item.content.trim())
+        .slice(-MAX_HISTORY_MESSAGES)
+        .map((item) => ({
+            role: item.role,
+            content: item.content.trim().slice(0, MAX_HISTORY_MESSAGE_LENGTH),
+        }));
+
+    while (cleaned.length && cleaned[0].role !== "user") cleaned.shift();
+
+    // Providers expect alternating roles, so merge consecutive same-role turns.
+    return cleaned.reduce((merged, item) => {
+        const last = merged.at(-1);
+        if (last && last.role === item.role) {
+            last.content = `${last.content}\n${item.content}`;
+        } else {
+            merged.push({ ...item });
+        }
+        return merged;
+    }, []);
+}
 
 function sendJson(response, status, body) {
     response.writeHead(status, {
@@ -282,7 +315,8 @@ const server = createServer(async (request, response) => {
             });
             return;
         }
-        const result = await getChatReply([{ role: "user", content: message }]);
+        const history = sanitizeHistory(body.history);
+        const result = await getChatReply([...history, { role: "user", content: message }]);
         sendJson(response, 200, { reply: result.reply });
     } catch (error) {
         sendJson(response, error.status || 400, {
