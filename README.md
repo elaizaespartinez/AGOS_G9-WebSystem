@@ -1,5 +1,5 @@
 <div align="center">
-<video src="AGOS/Sagap_banner.webp" width="100%" controls autoplay loop muted></video>
+<video src="[AGOS/Sagap_banner.webp](https://github.com/elaizaespartinez/AGOS_G9-WebSystem/blob/main/AGOS/Sagap_banner.webp)" width="100%" controls autoplay loop muted></video>
  
 <h1 align="center">🌊 A.G.O.S. — Abiso at Gabay sa Oras ng Sakuna</h1>
 <i>"Sa bawat AGOS, may gabay."</i>
