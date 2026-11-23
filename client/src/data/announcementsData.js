@@ -53,6 +53,7 @@ export const defaultAnnouncementsData = {
     ],
     monitoring: [],
     advisories: [],
+    activeAlerts: [],
     manualAnnouncements: [],
 };
 
@@ -115,4 +116,5 @@ export const mockAnnouncementsData = {
             text: "Check current flood-prone areas before leaving your location.",
         },
     ],
+    activeAlerts: [],
 };

@@ -1,75 +1,114 @@
 import { mockHomeData } from "../data/homeData";
+import { supabase } from "../lib/supabaseClient";
 import {
     listPublicCommunications,
     subscribeToPublicCommunications,
 } from "./publicCommunicationsService";
+import { getHomeWeather, getWeather } from "./weatherService";
+import { getFloodRiskLevel } from "../lib/floodRisk";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const mapHotlineNumbers = (hotline) => {
+    const value = hotline.number ?? hotline.numbers ?? "";
+
+    if (Array.isArray(value)) {
+        return value.flatMap((number) =>
+            String(number)
+                .split(/[,/]/)
+                .map((item) => item.trim())
+                .filter(Boolean),
+        );
+    }
+
+    return String(value)
+        .split(/[,/]/)
+        .map((number) => number.trim())
+        .filter(Boolean);
+};
+
+const getHotlines = async () => {
+    const { data, error } = await supabase
+        .from("hotlines")
+        .select("*")
+        .eq("active", true)
+        .order("name");
+
+    if (error) throw error;
+
+    return (data || []).map((hotline) => ({
+        id: hotline.id,
+        name: hotline.name,
+        numbers: mapHotlineNumbers(hotline),
+    }));
+};
 
 const getHomeDashboard = async () => {
-    if (!API_BASE_URL) {
-        if (import.meta.env.DEV) {
-            const { alerts } = await listPublicCommunications();
-            const alert = alerts[0];
+    const [
+        weatherResult,
+        hotlinesResult,
+        communicationsResult,
+        floodWeatherResult,
+    ] =
+        await Promise.allSettled([
+            getHomeWeather(),
+            getHotlines(),
+            listPublicCommunications(),
+            getWeather(),
+        ]);
 
-            return {
-                ...mockHomeData,
-                ...(alert
-                    ? {
-                          activeAlert: {
-                              title: alert.title,
-                              description: alert.description,
-                              type: "rainfall",
-                              severity:
-                                  alert.severity === "safe"
-                                      ? "safe"
-                                      : alert.severity === "monitor"
-                                        ? "moderate"
-                                        : "high",
-                              updatedAt: alert.startsAt
-                                  ? new Date(alert.startsAt).toLocaleString()
-                                  : "Just now",
-                              source: alert.source,
-                          },
-                      }
-                    : {}),
-            };
-        }
-
-        throw new Error("The Home dashboard API URL is not configured.");
+    if (
+        weatherResult.status === "rejected" &&
+        hotlinesResult.status === "rejected"
+    ) {
+        throw new Error("Unable to load weather and hotline data.");
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/home`);
+    const alert =
+        communicationsResult.status === "fulfilled"
+            ? communicationsResult.value.alerts[0]
+            : null;
 
-    if (!response.ok) {
-        throw new Error(`Home dashboard request failed with status ${response.status}.`);
-    }
-
-    const apiData = await response.json();
-    const { alerts } = await listPublicCommunications();
-    const alert = alerts[0];
+    const floodRisk =
+        floodWeatherResult.status === "fulfilled"
+            ? getFloodRiskLevel(floodWeatherResult.value)
+            : null;
 
     return {
-        ...apiData,
-        ...(alert
+        ...mockHomeData,
+        weather:
+            weatherResult.status === "fulfilled"
+                ? weatherResult.value
+                : mockHomeData.weather,
+        hotlines:
+            hotlinesResult.status === "fulfilled"
+                ? hotlinesResult.value
+                : [],
+        floodStatus:
+            floodRisk
+                ? {
+                      risk: floodRisk,
+                      level: `${floodRisk.replace(/^./, (letter) => letter.toUpperCase())} Risk`,
+                      location: "Batangas City",
+                      updatedAt: floodWeatherResult.value.lastUpdated.toLocaleString(),
+                      source: "Open-Meteo rainfall estimate",
+                  }
+                : mockHomeData.floodStatus,
+        activeAlert: alert
             ? {
-                  activeAlert: {
-                      title: alert.title,
-                      description: alert.description,
-                      type: "rainfall",
-                      severity:
-                          alert.severity === "safe"
-                              ? "safe"
-                              : alert.severity === "monitor"
-                                ? "moderate"
-                                : "high",
-                      updatedAt: alert.startsAt
-                          ? new Date(alert.startsAt).toLocaleString()
-                          : "Just now",
-                      source: alert.source,
-                  },
+                  title: alert.title,
+                  description: alert.description,
+                  type: "rainfall",
+                  severity:
+                      alert.severity === "safe"
+                          ? "safe"
+                          : alert.severity === "monitor"
+                            ? "moderate"
+                            : "high",
+                  updatedAt: alert.startsAt
+                      ? new Date(alert.startsAt).toLocaleString()
+                      : "Just now",
+                  source: alert.source,
               }
-            : {}),
+            : mockHomeData.activeAlert,
     };
 };
 

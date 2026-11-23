@@ -5,6 +5,7 @@ import {
     Map,
     MapPin,
     Megaphone,
+    Phone,
     Settings,
     X,
 } from "lucide-react";
@@ -16,7 +17,7 @@ const sections = [
         label: "Overview",
         items: [
             { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-            { to: "/admin/locations", label: "Hazard Monitoring", icon: Map, query: "hazards" },
+            { to: "/admin/locations", label: "Hazard Monitoring", icon: Map },
         ],
     },
     {
@@ -30,7 +31,8 @@ const sections = [
     {
         label: "Resources",
         items: [
-            { to: "/admin/locations", label: "Locations & Hotlines", icon: MapPin, query: "resources" },
+            { to: "/admin/hotlines", label: "Emergency Hotlines", icon: Phone },
+            { to: "/admin/evacuation-centers", label: "Evacuation Centers", icon: MapPin },
         ],
     },
     {
@@ -40,15 +42,6 @@ const sections = [
         ],
     },
 ];
-
-function isActivePath(pathname, to) {
-    if (to === "/admin/dashboard") {
-        return pathname === "/admin" || pathname === "/admin/dashboard";
-    }
-
-    if (to === "/admin") return pathname === "/admin";
-    return pathname === to || pathname.startsWith(`${to}/`);
-}
 
 export default function AdminSidebar({ open, onClose }) {
     return (
@@ -88,43 +81,31 @@ export default function AdminSidebar({ open, onClose }) {
                             {label}
                         </p>
                         <div className="flex flex-col gap-1">
-                            {items.map(({ to, label: itemLabel, icon: Icon, query }) => (
+                            {items.map(({ to, label: itemLabel, icon: Icon }) => (
                                 <NavLink
                                     key={itemLabel}
-                                    to={query ? `${to}?view=${query}` : to}
+                                    to={to}
                                     end={to === "/admin"}
                                     onClick={onClose}
-                                    className={({ isActive }) => {
-                                        const active = query
-                                            ? isActivePath(window.location.pathname, to) &&
-                                              new URLSearchParams(window.location.search).get("view") === query
-                                            : isActive;
-
-                                        return `group flex min-h-11 items-center gap-3 rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                                            active
+                                    className={({ isActive }) =>
+                                        `group flex min-h-11 items-center gap-3 rounded-lg px-2.5 py-2 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                                            isActive
                                                 ? "bg-primary text-white shadow-card"
                                                 : "text-text/70 hover:bg-background hover:text-primary"
-                                        }`;
-                                    }}
+                                        }`
+                                    }
                                 >
-                                    {({ isActive }) => {
-                                        const active = query
-                                            ? isActivePath(window.location.pathname, to) &&
-                                              new URLSearchParams(window.location.search).get("view") === query
-                                            : isActive;
-
-                                        return (
-                                            <>
-                                                <Icon
-                                                    size={17}
-                                                    strokeWidth={active ? 2.5 : 2}
-                                                    className={active ? "text-white" : "text-primary"}
-                                                    aria-hidden="true"
-                                                />
-                                                <span className="truncate">{itemLabel}</span>
-                                            </>
-                                        );
-                                    }}
+                                    {({ isActive }) => (
+                                        <>
+                                            <Icon
+                                                size={17}
+                                                strokeWidth={isActive ? 2.5 : 2}
+                                                className={isActive ? "text-white" : "text-primary"}
+                                                aria-hidden="true"
+                                            />
+                                            <span className="truncate">{itemLabel}</span>
+                                        </>
+                                    )}
                                 </NavLink>
                             ))}
                         </div>

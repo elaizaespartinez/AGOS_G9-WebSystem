@@ -1,10 +1,4 @@
 const ago = (minutes) => new Date(Date.now() - minutes * 60000).toISOString();
-export const reports = [
-  { id: "RPT-024", type: "Flooded road", location: "Brgy. Sta. Rita", barangay: "Sta. Rita", description: "Water is covering the road near the multipurpose hall.", latitude: 13.756, longitude: 121.058, reporter: "s***@example.com", risk: "affected", status: "pending", createdAt: ago(8), photoUrl: "" },
-  { id: "RPT-023", type: "Transport disruption", location: "BatStateU - PB", barangay: "Alangilan", description: "Jeepneys are temporarily unable to pass.", latitude: 13.772, longitude: 121.073, reporter: "m***@example.com", risk: "monitor", status: "verified", createdAt: ago(18), photoUrl: "" },
-  { id: "RPT-022", type: "Road is passable", location: "Brgy. Alangilan", barangay: "Alangilan", description: "Road is passable with light rain.", latitude: 13.771, longitude: 121.075, reporter: "j***@example.com", risk: "safe", status: "pending", createdAt: ago(31), photoUrl: "" },
-  { id: "RPT-021", type: "Flooded road", location: "Brgy. Kumintang", barangay: "Kumintang", description: "Floodwater is rising beside the main road.", latitude: 13.764, longitude: 121.064, reporter: "c***@example.com", risk: "evacuate", status: "rejected", createdAt: ago(90), photoUrl: "" },
-];
 export const locations = [
   { id: "LOC-001", name: "Batangas City", risk: "monitor", reports: 14, updatedAt: ago(12), source: "Community reports", confidence: 82, why: "Rainfall reports are increasing.", override: null },
   { id: "LOC-002", name: "Brgy. Sta. Rita", risk: "affected", reports: 8, updatedAt: ago(18), source: "DRRMO field report", confidence: 91, why: "Multiple reports indicate road flooding.", override: null },

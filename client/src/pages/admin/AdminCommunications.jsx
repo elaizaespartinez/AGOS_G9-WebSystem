@@ -8,6 +8,7 @@ import {
     Megaphone,
     Plus,
     Radio,
+    RefreshCw,
     Send,
     XCircle,
 } from "lucide-react";
@@ -15,6 +16,9 @@ import {
     ALERT_SEVERITIES,
     ANNOUNCEMENT_CATEGORIES,
     ANNOUNCEMENT_SEVERITIES,
+    getCachedAlerts,
+    getCachedAnnouncements,
+    getCachedLocations,
     listAlerts,
     listCommunicationLocations,
     listCommunicationsAnnouncements,
@@ -28,6 +32,7 @@ import ErrorState from "../../components/admin/ErrorState";
 import Toast from "../../components/admin/Toast";
 import AdminPageHeader from "../../components/admin/AdminPageHeader";
 import LoadingState from "../../components/admin/LoadingState";
+import formatPht from "../../lib/formatPht";
 
 const emptyAlert = {
     title: "",
@@ -53,29 +58,50 @@ const emptyAnnouncement = {
 
 function AdminCommunications() {
     const [activeTab, setActiveTab] = useState("alerts");
-    const [alerts, setAlerts] = useState([]);
-    const [announcements, setAnnouncements] = useState([]);
-    const [locations, setLocations] = useState([]);
+    const [alerts, setAlerts] = useState(() => getCachedAlerts() || []);
+    const [announcements, setAnnouncements] = useState(() => getCachedAnnouncements() || []);
+    const [locations, setLocations] = useState(() => getCachedLocations() || []);
     const [editing, setEditing] = useState(null);
     const [toast, setToast] = useState("");
     const [error, setError] = useState("");
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!getCachedAlerts() && !getCachedAnnouncements());
+    const [refreshing, setRefreshing] = useState(false);
 
-    const load = () => {
-        setLoading(true);
-        Promise.all([listAlerts(), listCommunicationsAnnouncements(), listCommunicationLocations()])
+    const load = (isInitial = false) => {
+        if (isInitial && !getCachedAlerts() && !getCachedAnnouncements()) {
+            setLoading(true);
+        } else {
+            setRefreshing(true);
+        }
+        setError("");
+
+        const locationsTask = locations.length
+            ? Promise.resolve(locations)
+            : listCommunicationLocations();
+
+        Promise.all([
+            listAlerts(),
+            listCommunicationsAnnouncements(),
+            locationsTask,
+        ])
             .then(([nextAlerts, nextAnnouncements, nextLocations]) => {
                 setAlerts(nextAlerts);
                 setAnnouncements(nextAnnouncements);
-                setLocations(nextLocations);
+                if (nextLocations && nextLocations.length) {
+                    setLocations(nextLocations);
+                }
+                setError("");
             })
             .catch((loadError) => setError(loadError.message))
-            .finally(() => setLoading(false));
+            .finally(() => {
+                setLoading(false);
+                setRefreshing(false);
+            });
     };
 
     useEffect(() => {
-        load();
-        const unsubscribe = subscribeToCommunications(load);
+        load(true);
+        const unsubscribe = subscribeToCommunications(() => load(false));
         return unsubscribe;
     }, []);
 
@@ -107,25 +133,43 @@ function AdminCommunications() {
                     setToast("Expiration must be later than the start date.");
                     return;
                 }
-                await saveAlert({
+                const saved = await saveAlert({
                     ...values,
                     affectedBarangays: formData.getAll("affectedBarangays"),
                 }, editing.item?.id);
+                setAlerts((prev) => {
+                    const exists = prev.some((item) => item.id === saved.id);
+                    return exists ? prev.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...prev];
+                });
             } else {
-                await saveCommunicationAnnouncement({
+                const saved = await saveCommunicationAnnouncement({
                     ...values,
                     affectedAreas: formData.getAll("affectedAreas"),
                 }, editing.item?.id);
+                setAnnouncements((prev) => {
+                    const exists = prev.some((item) => item.id === saved.id);
+                    return exists ? prev.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...prev];
+                });
             }
             setEditing(null);
             setToast("Communication saved.");
-            load();
+            load(false);
         } catch (saveError) {
             setToast(saveError.message);
         }
     };
 
     const changeStatus = async (item, status) => {
+        if (activeTab === "alerts") {
+            setAlerts((prev) =>
+                prev.map((a) => (a.id === item.id ? { ...a, status } : a)),
+            );
+        } else {
+            setAnnouncements((prev) =>
+                prev.map((a) => (a.id === item.id ? { ...a, status } : a)),
+            );
+        }
+
         try {
             if (activeTab === "alerts") {
                 await updateAlertStatus(item.id, status);
@@ -133,28 +177,55 @@ function AdminCommunications() {
                 await updateCommunicationAnnouncementStatus(item.id, status);
             }
             setToast(`Item ${status}.`);
-            load();
+            load(false);
         } catch (statusError) {
             setToast(statusError.message);
+            load(false);
         }
     };
 
     if (loading) return <LoadingState message="Loading alerts and announcements..." />;
-    if (error) return <ErrorState message={error} onRetry={load} />;
+    if (error && !alerts.length && !announcements.length) {
+        return <ErrorState message={error} onRetry={() => load(true)} />;
+    }
 
     return (
         <section>
             <AdminPageHeader
                 title="Alerts & announcements"
                 description="Publish verified public information separately from automated monitoring."
-                onRefresh={load}
-                refreshing={loading}
+                onRefresh={() => load(false)}
+                refreshing={refreshing}
                 actions={
-                    <button type="button" onClick={() => setEditing({ type: activeTab === "alerts" ? "alert" : "announcement", item: null })} className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 text-xs font-bold text-white hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                        <Plus size={16} /> Create {activeTab === "alerts" ? "alert" : "announcement"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {refreshing && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                                <RefreshCw size={12} className="animate-spin" />
+                                Refreshing...
+                            </span>
+                        )}
+                        <button type="button" onClick={() => setEditing({ type: activeTab === "alerts" ? "alert" : "announcement", item: null })} className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 text-xs font-bold text-white hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                            <Plus size={16} /> Create {activeTab === "alerts" ? "alert" : "announcement"}
+                        </button>
+                    </div>
                 }
             />
+
+            {error && (
+                <div
+                    role="alert"
+                    className="mt-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800"
+                >
+                    <span>Failed to refresh communications: {error}</span>
+                    <button
+                        type="button"
+                        onClick={() => load(false)}
+                        className="ml-2 font-bold underline hover:no-underline"
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
 
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <Summary label="Active alerts" value={activeCount} />
@@ -195,7 +266,7 @@ function AdminCommunications() {
                                     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-text/55">
                                         <span>Source: {item.source}</span>
                                         <span>Issued by: {item.issuingAdministrator}</span>
-                                        <span><Clock3 size={12} className="mr-1 inline" />{item.publishedAt ? new Date(item.publishedAt).toLocaleString() : "Not published"}</span>
+                                        <span><Clock3 size={12} className="mr-1 inline" />{activeTab === "alerts" ? `Starts ${formatPht(item.startsAt) || "—"} · Expires ${formatPht(item.expiresAt) || "—"}` : item.publishedAt ? `Published ${formatPht(item.publishedAt)}` : "Not published"}</span>
                                     </div>
                                 </div>
                                 <div className="flex flex-wrap gap-2">

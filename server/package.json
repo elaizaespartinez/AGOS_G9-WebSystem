@@ -1,0 +1,10 @@
+{
+  "name": "agos-chat-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=../.env index.js",
+    "dev": "node --watch --env-file-if-exists=../.env index.js",
+    "test": "node --test"
+  }
+}

@@ -18,6 +18,7 @@ import {
     formatRelativeTime,
     getReportMatchSummary,
     isExpired,
+    reportsMatch,
 } from "../../lib/adminRules";
 import EmptyState from "../../components/admin/EmptyState";
 import ErrorState from "../../components/admin/ErrorState";
@@ -34,38 +35,52 @@ const reportTypes = [
     "Unsafe route",
 ];
 const barangays = ["Sta. Rita", "Alangilan", "Kumintang", "Cuta"];
-const statuses = ["all", "pending", "verified", "rejected"];
+const statuses = ["all", "pending", "verified", "rejected", "expired"];
 const risks = ["safe", "monitor", "affected", "evacuate"];
 
 const fieldClass =
     "mt-1 min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary";
 
+// Last loaded reports per filter set, so the page shows instantly on return
+// and refreshes quietly in the background.
+const reportsCache = new Map();
+const getCacheKey = (filters) => JSON.stringify(filters);
+
 function AdminReports() {
     const [searchParams, setSearchParams] = useSearchParams();
-    const [reports, setReports] = useState([]);
-    const [selectedId, setSelectedId] = useState(null);
-    const [filters, setFilters] = useState({
+    const initialFilters = {
         type: "",
         barangay: "",
         date: "",
         status: searchParams.get("status") || "all",
         risk: "",
-    });
+    };
+    const initialCached = reportsCache.get(getCacheKey(initialFilters));
+    const [reports, setReports] = useState(initialCached || []);
+    const [selectedId, setSelectedId] = useState(initialCached?.[0]?.id || null);
+    const [filters, setFilters] = useState(initialFilters);
     const [rejectReason, setRejectReason] = useState("");
     const [assessedSeverity, setAssessedSeverity] = useState("monitor");
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!initialCached);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState("");
     const [toast, setToast] = useState("");
     const [lastUpdated, setLastUpdated] = useState(null);
 
     const loadReports = () => {
-        setLoading(true);
+        const cacheKey = getCacheKey(filters);
+        const cached = reportsCache.get(cacheKey);
+        // Only show the full-page spinner when there is nothing to show yet.
+        if (cached) setReports(cached);
+        else setLoading(true);
+        setRefreshing(true);
         setError("");
         listReports({
             ...filters,
             status: filters.status === "all" ? "" : filters.status,
         })
             .then((data) => {
+                reportsCache.set(cacheKey, data);
                 setReports(data);
                 setSelectedId((current) =>
                     data.some((report) => report.id === current)
@@ -76,7 +91,10 @@ function AdminReports() {
                 setLastUpdated(new Date());
             })
             .catch((loadError) => setError(loadError.message))
-            .finally(() => setLoading(false));
+            .finally(() => {
+                setLoading(false);
+                setRefreshing(false);
+            });
     };
 
     useEffect(() => {
@@ -97,7 +115,7 @@ function AdminReports() {
     const selected = reports.find(({ id }) => id === selectedId) || null;
     const summary = aggregateReports(reports);
     const nearbyReports = selected
-        ? reports.filter((report) => report.location === selected.location)
+        ? reports.filter((report) => reportsMatch(selected, report))
         : [];
     const matchSummary = getReportMatchSummary(nearbyReports);
     const aggregationMessage = matchSummary.conflicts
@@ -109,12 +127,12 @@ function AdminReports() {
     const counts = useMemo(
         () => ({
             all: reports.length,
-            pending: reports.filter((report) => report.status === "pending")
-                .length,
+            pending: summary.pending,
             verified: reports.filter((report) => report.status === "verified")
                 .length,
             rejected: reports.filter((report) => report.status === "rejected")
                 .length,
+            expired: summary.expired,
         }),
         [reports],
     );
@@ -152,7 +170,7 @@ function AdminReports() {
                 title="Community reports"
                 description="Review incoming reports without treating one unverified claim as a major alert."
                 onRefresh={loadReports}
-                refreshing={loading}
+                refreshing={refreshing}
             />
             {lastUpdated && (
                 <p className="text-right text-[11px] text-text/50">
@@ -275,9 +293,7 @@ function AdminReports() {
                                             {
                                                 getReportMatchSummary(
                                                     reports.filter(
-                                                        (item) =>
-                                                            item.location ===
-                                                            report.location,
+                                                        (item) => reportsMatch(report, item),
                                                     ),
                                                 ).distinctReporters
                                             }{" "}
