@@ -1,5 +1,5 @@
 <div align="center">
-<img src="AGOS/Sagap_banner.webp" width="600" alt="AGOS banner">
+<img src="AGOS/Sagap_banner.webp" width="500" alt="AGOS banner">
  
 <h1 align="center">🌊 A.G.O.S. — Abiso at Gabay sa Oras ng Sakuna</h1>
 <i>"Sa bawat AGOS, may gabay."</i>
