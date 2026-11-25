@@ -10,6 +10,7 @@ import {
     getCitiesByProvince,
     getBarangaysByCity,
 } from "../services/locationService";
+import PrivacyConsentModal from "../components/PrivacyConsentModal";
 
 const fieldClass =
     "w-full min-h-11 rounded-lg border border-gray-300 bg-background px-3 py-2 text-sm text-text placeholder:text-text/40 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/40 disabled:cursor-not-allowed disabled:opacity-60";
@@ -30,6 +31,8 @@ const normalizePhoneInput = (value) => {
     return digits.slice(0, 10);
 };
 
+const PRIVACY_POLICY_VERSION = "1.0";
+
 function CompleteProfile() {
     const navigate = useNavigate();
     const { user, loading: authLoading } = useAuth();
@@ -46,6 +49,8 @@ function CompleteProfile() {
     const [provinces, setProvinces] = useState([]);
     const [cities, setCities] = useState([]);
     const [barangays, setBarangays] = useState([]);
+
+    const [showConsent, setShowConsent] = useState(false);
 
     // Location loading states
     const [isLoadingProvinces, setIsLoadingProvinces] = useState(true);
@@ -215,7 +220,8 @@ function CompleteProfile() {
         };
     }, [cityId]);
 
-    const handleCompleteProfile = async (e) => {
+    // Validate the form, then request privacy consent.
+const handleCompleteProfile = (e) => {
         e.preventDefault();
         setError("");
 
@@ -246,7 +252,6 @@ function CompleteProfile() {
             return;
         }
 
-        // Make sure the selected locations belong to each other.
         const validProvince = provinces.some(
             (province) => province.psgc_code === provinceID
         );
@@ -264,7 +269,16 @@ function CompleteProfile() {
             return;
         }
 
+        // Show the privacy consent modal before saving.
+        setShowConsent(true);
+    };
+
+    // Save profile and privacy consent after agreement.
+    const completeProfileWithConsent = async () => {
+        if (!user) return;
+
         setIsLoading(true);
+        setError("");
 
         try {
             const profileData = {
@@ -289,10 +303,14 @@ function CompleteProfile() {
                 );
             }
 
-            // Update the corresponding public.profiles record.
+            // Save profile details and consent in public.profiles.
             const { data: profile, error: profileError } = await supabase
                 .from("profiles")
-                .update(profileData)
+                .update({
+                    ...profileData,
+                    privacy_consent_at: new Date().toISOString(),
+                    privacy_policy_version: PRIVACY_POLICY_VERSION,
+                })
                 .eq("id", user.id)
                 .select("id")
                 .maybeSingle();
@@ -305,6 +323,7 @@ function CompleteProfile() {
                 );
             }
 
+            setShowConsent(false);
             navigate("/", { replace: true });
         } catch (err) {
             console.error("Complete profile error:", err);
@@ -313,6 +332,8 @@ function CompleteProfile() {
                 err.message ||
                 "An error occurred while completing your profile. Please try again."
             );
+
+            setShowConsent(false);
         } finally {
             setIsLoading(false);
         }
@@ -633,6 +654,14 @@ function CompleteProfile() {
                     </form>
                 </section>
             </div>
+            {showConsent && (
+                <PrivacyConsentModal
+                    isSubmitting={isLoading}
+                    agreeLabel="Agree and complete profile"
+                    onDecline={() => setShowConsent(false)}
+                    onAgree={completeProfileWithConsent}
+                />
+            )}
         </main>
     );
 }

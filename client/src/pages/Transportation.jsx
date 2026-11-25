@@ -74,7 +74,7 @@ function Transportation() {
 
     return (
         <main className="transportation-page">
-            <section className="transport-map-wrap">
+            <section className="transport-map-wrap bg-white p-2">
                 <TransportationMap
                     onDestinationsSorted={handleDestinationsSorted}
                     requestedDestinationId={selectedDestinationId}

@@ -1,6 +1,7 @@
 
 import { supabase } from "../lib/supabaseClient";
 
+
 export const signUp = async ({
     name,
     email,
@@ -9,6 +10,8 @@ export const signUp = async ({
     provinceID,
     cityID,
     barangayId,
+    privacyConsentAt,
+    privacyPolicyVersion,
 }) => {
     if (
         !name?.trim() ||
@@ -17,7 +20,9 @@ export const signUp = async ({
         !phoneNumber ||
         !provinceID ||
         !cityID ||
-        !barangayId
+        !barangayId ||
+        !privacyConsentAt ||
+        !privacyPolicyVersion
     ) {
         throw new Error("Please complete all registration fields.");
     }
@@ -32,6 +37,8 @@ export const signUp = async ({
                 province_id: provinceID,
                 city_id: cityID,
                 barangay_id: barangayId,
+                privacy_consent_at: privacyConsentAt,
+                privacy_policy_version: privacyPolicyVersion,
             },
         },
     });
@@ -40,6 +47,7 @@ export const signUp = async ({
 
     return data;
 };
+
 
 export const signIn = async ({ email, password }) => {
     const { data, error } = await supabase.auth.signInWithPassword({

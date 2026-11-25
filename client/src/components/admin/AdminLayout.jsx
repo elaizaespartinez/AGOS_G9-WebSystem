@@ -48,7 +48,7 @@ export default function AdminLayout() {
             />
 
             <div className="min-w-0 flex-1">
-                <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 md:px-8">
+                <header className="flex h-16 gap-2 items-center justify-between border-b border-gray-200 bg-white px-4 md:px-8">
                     <button
                         type="button"
                         className="text-secondary md:hidden"
@@ -110,7 +110,7 @@ export default function AdminLayout() {
                                 </div>
 
                                 <Link
-                                    to="/profile"
+                                    to="/admin/profile"
                                     role="menuitem"
                                     onClick={() => setAccountOpen(false)}
                                     className="mt-2 flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-text/80 hover:bg-background hover:text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"

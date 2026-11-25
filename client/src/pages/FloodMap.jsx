@@ -147,9 +147,9 @@ function FloodMap() {
         normal: "bg-safe",
     };
     return (
-        <div className="mx-auto max-w-[var(--container-agos)] px-4 py-3 lg:h-[calc(100dvh-5rem)] lg:overflow-hidden">
+        <div className="mx-auto max-w-[1600px] px-4 py-3 lg:h-[calc(100dvh-5rem)] lg:overflow-hidden">
             <section className="grid gap-4 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_20rem]">
-                <div className="flex flex-col gap-2 lg:h-full lg:min-h-0">
+                <div className="flex flex-col gap-2 lg:h-full lg:min-h-0  bg-white p-1 rounded-xl ">
                     <div className="h-[50dvh] min-h-0 flex-1 lg:h-full">
                         <FloodMapLeaflet
                             weatherData={weather ? [weather] : []}

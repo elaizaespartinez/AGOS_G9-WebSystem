@@ -118,6 +118,7 @@ function FloodMapLeaflet({
     floodReports = [],
     onSatelliteDateChange,
     onNoahVisibilityChange,
+    preview = false,
 }) {
     const mapElement = useRef(null);
     const mapInstance = useRef(null);
@@ -151,6 +152,8 @@ function FloodMapLeaflet({
     }, [weatherData]);
 
     useEffect(() => {
+        if (preview) return undefined;
+
         let cancelled = false;
 
         async function refreshWeather() {
@@ -168,7 +171,7 @@ function FloodMapLeaflet({
             cancelled = true;
             window.clearInterval(weatherInterval);
         };
-    }, []);
+    }, [preview]);
 
     useEffect(() => {
         const layer = hazardLayerRef.current;
@@ -191,6 +194,13 @@ function FloodMapLeaflet({
             maxBoundsViscosity: 0.75,
             zoomControl: true,
             preferCanvas: true,
+            scrollWheelZoom: true,
+            dragging: true,
+            doubleClickZoom: true,
+            boxZoom: true,
+            touchZoom: true,
+            keyboard: true,
+            attributionControl: true,
         });
         mapInstance.current = map;
         const tiles = L.tileLayer(floodMapConfig.tileUrl, {
@@ -212,8 +222,13 @@ function FloodMapLeaflet({
             },
         });
         hazardLayerRef.current = hazardLayer;
-        const layerControl = L.control.layers(null, { [NOAH_LABEL]: hazardLayer }, { position: "topright" }).addTo(map);
-        const layerToggle = layerControl.getContainer().querySelector(".leaflet-control-layers-toggle");
+        const layerControl = preview
+            ? null
+            : L.control.layers(null, { [NOAH_LABEL]: hazardLayer }, { position: "topright" }).addTo(map);
+        if (preview) {
+            map.removeLayer(hazardLayer);
+        }
+        const layerToggle = layerControl?.getContainer().querySelector(".leaflet-control-layers-toggle");
         if (layerToggle) {
             layerToggle.textContent = "Layers";
             layerToggle.setAttribute("aria-label", "Layers");
@@ -269,8 +284,9 @@ function FloodMapLeaflet({
         map.on("overlayremove", handleNoahRemove);
 
         let cancelled = false;
-        L.control.scale({ imperial: false }).addTo(map);
+        if (!preview) L.control.scale({ imperial: false }).addTo(map);
         async function refreshRadar() {
+            if (preview) return;
             try {
                 const response = await fetch("https://api.rainviewer.com/public/weather-maps.json");
                 if (!response.ok) throw new Error(`RainViewer request failed with status ${response.status}.`);
@@ -298,8 +314,12 @@ function FloodMapLeaflet({
             }
         }
 
-        refreshRadar();
-        const radarInterval = window.setInterval(refreshRadar, 10 * 60 * 1000);
+        if (!preview) {
+            refreshRadar();
+        }
+        const radarInterval = preview
+            ? null
+            : window.setInterval(refreshRadar, 10 * 60 * 1000);
         const facilityIcon = L.divIcon({
             className: "flood-facility-marker",
             html: "<span>⌂</span>",
@@ -311,7 +331,7 @@ function FloodMapLeaflet({
             .bindPopup(`${facility.name}<br>${facility.type}`));
 
         const locationMarker = { marker: null, accuracy: null };
-        if (navigator.geolocation) {
+        if (!preview && navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 ({ coords }) => {
                     if (cancelled) return;
@@ -336,6 +356,7 @@ function FloodMapLeaflet({
         }
 
         async function loadGfm() {
+            if (preview) return;
             try {
                 const response = await fetch(GFM_CAPABILITIES_URL);
                 if (!response.ok) throw new Error(`GFM GetCapabilities failed with status ${response.status}.`);
@@ -386,14 +407,14 @@ function FloodMapLeaflet({
             tiles.off("tileerror", handleTileError);
             map.off("overlayadd", handleNoahAdd);
             map.off("overlayremove", handleNoahRemove);
-            window.clearInterval(radarInterval);
+            if (radarInterval) window.clearInterval(radarInterval);
             radarLayer.current?.remove();
             radarLayer.current = null;
             gfmLayer.current?.remove();
             gfmLayer.current = null;
             hazardLayerRef.current = null;
             hazardDataRef.current = null;
-            layerControl.remove();
+            layerControl?.remove();
             facilityMarkers.current.forEach((marker) => marker.remove());
             facilityMarkers.current = [];
             locationMarker.marker?.remove();
@@ -403,7 +424,7 @@ function FloodMapLeaflet({
             reportCircles.current.forEach((circle) => circle.remove());
             map.remove();
         };
-    }, [facilityData, onNoahVisibilityChange, onSatelliteDateChange]);
+    }, [facilityData, onNoahVisibilityChange, onSatelliteDateChange, preview]);
 
     useEffect(() => {
         const metadata = gfmMetadata.current;
@@ -445,7 +466,7 @@ function FloodMapLeaflet({
                 iconSize: [28, 28],
                 iconAnchor: [14, 14],
             });
-            return L.marker([report.lat, report.lng], { icon })
+            return L.marker([report.lat, report.lng], { icon }) 
                 .setZIndexOffset(report.level === "Evacuate" ? 300 : report.level === "Alert" ? 200 : 0)
                 .addTo(mapInstance.current)
                 .bindPopup(createReportPopup(report));
@@ -463,9 +484,9 @@ function FloodMapLeaflet({
     }, [floodReports]);
 
     return (
-        <div className="relative h-full min-h-[24rem] overflow-hidden rounded-2xl bg-slate-200 shadow-elevated">
-            <div ref={mapElement} className="h-full min-h-[24rem] w-full" aria-label="Interactive Batangas City flood hazard map" />
-            <div className="flood-map-date-control absolute left-3 top-3 z-[400] rounded-lg bg-white/95 px-3 py-2 shadow-card">
+        <div className={`relative h-full overflow-hidden bg-slate-200 ${preview ? "min-h-0 flood-map-preview" : "min-h-[24rem]"}`}>
+            <div ref={mapElement} className={`h-full w-full ${preview ? "min-h-0" : "min-h-[24rem]"}`} aria-label={`${preview ? "Preview of" : "Interactive"} Batangas City flood hazard map`} />
+            {!preview && <div className="flood-map-date-control absolute left-3 top-3 z-[400] rounded-lg bg-white/95 px-3 py-2 shadow-card">
                 <label htmlFor="flood-map-date">Satellite date</label>
                 <input
                     id="flood-map-date"
@@ -476,8 +497,8 @@ function FloodMapLeaflet({
                     onChange={(event) => setGfmDate(event.target.value)}
                     disabled={!gfmMetadata.current}
                 />
-            </div>
-            <button
+            </div>}
+            {!preview && <button
                 type="button"
                 onClick={() => {
                     setRadarVisible((visible) => {
@@ -494,8 +515,8 @@ function FloodMapLeaflet({
                 aria-pressed={radarVisible}
             >
                 {radarVisible ? "Hide radar" : "Show radar"}
-            </button>
-            {noahVisible && <div className="flood-map-noah-card pointer-events-none absolute left-3 z-[400] rounded-xl bg-white/90 px-3 py-2 text-xs shadow-card backdrop-blur">
+            </button>}
+            {!preview && noahVisible && <div className="flood-map-noah-card pointer-events-none absolute left-3 z-[400] rounded-xl bg-white/90 px-3 py-2 text-xs shadow-card backdrop-blur">
                 <p className="font-semibold text-text">Flood-Prone Areas</p>
                 <p className="text-[0.65rem] text-text/60">Project NOAH 25-year hazard model</p>
                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
@@ -506,22 +527,22 @@ function FloodMapLeaflet({
                 {noahStatus === "loading" && <p className="mt-2 text-text/60">Loading flood-prone areas...</p>}
                 {noahStatus === "error" && <p className="mt-2 text-risk-high">Unable to load flood-prone areas.</p>}
             </div>}
-            <div className="flood-map-risk-card pointer-events-none absolute left-3 z-[400] rounded-xl bg-white/90 px-3 py-2 text-xs shadow-card backdrop-blur">
+            {!preview && <div className="flood-map-risk-card pointer-events-none absolute left-3 z-[400] rounded-xl bg-white/90 px-3 py-2 text-xs shadow-card backdrop-blur">
                 <p className="mt-1 font-semibold text-text">
                     Today's estimated risk: {estimatedRisk[0].toUpperCase() + estimatedRisk.slice(1)}
                 </p>
                 <p className="text-text/70">
                     Updated at {formatWeatherUpdatedAt(currentWeather?.lastUpdated)}
                 </p>
-            </div>
-            <p className="flood-map-satellite-note pointer-events-none absolute right-3 z-[400] max-w-[16rem] rounded-xl bg-white/90 px-3 py-2 text-xs text-text shadow-card backdrop-blur">
+            </div>}
+            {!preview && <p className="flood-map-satellite-note pointer-events-none absolute right-3 z-[400] max-w-[16rem] rounded-xl bg-white/90 px-3 py-2 text-xs text-text shadow-card backdrop-blur">
                 {gfmStatus === "loaded"
                     ? `Satellite data for ${gfmDate}. Not live.`
                     : gfmStatus === "empty"
                         ? `No flooding detected in the satellite data for ${gfmDate || "the selected date"}.`
                         : "Loading satellite flood data..."}
-            </p>
-            {mapError && (
+            </p>}
+            {!preview && mapError && (
                 <p className="flood-map-error absolute z-[400] max-w-[15rem] rounded-lg bg-white/95 px-3 py-2 text-xs text-text shadow-card">
                     {mapError}
                 </p>

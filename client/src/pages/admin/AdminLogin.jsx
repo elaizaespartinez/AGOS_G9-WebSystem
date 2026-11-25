@@ -130,13 +130,6 @@ function AdminLogin() {
 
                 {/* Logo panel (desktop only) */}
                 <section className="relative hidden flex-col items-center justify-center gap-5 border-r border-gray-200 bg-white p-8 md:flex">
-                    <Link
-                        to="/"
-                        className="absolute left-5 top-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-primary/10 px-4 text-sm font-semibold text-secondary transition-colors hover:bg-primary/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2"
-                    >
-                        <ArrowLeft size={16} aria-hidden="true" />
-                        Back to public site
-                    </Link>
 
                     <img
                         src={logo}
@@ -197,7 +190,7 @@ function AdminLogin() {
                             </div>
 
                             <div className="mt-2 flex justify-end">
-                                <Link to="/forgot-password" className="text-sm font-semibold text-secondary underline-offset-4 hover:underline">
+                                <Link to="/admin/forgot-password" className="text-sm font-semibold text-secondary underline-offset-4 hover:underline">
                                     Forgot password?
                                 </Link>
                             </div>

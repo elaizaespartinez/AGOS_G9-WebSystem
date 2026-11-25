@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Mail, Phone, LoaderCircle, CircleCheck, CircleAlert, X } from "lucide-react";
-import contactVisual from "../assets/visuals/contact-us.png"; // TODO: replace with your image path or imported asset
+import contactVisual from "../assets/visuals/contact-us.png";
+import { supabase } from "../lib/supabaseClient";
 
 const getInputClass = (hasError) =>
     `w-full rounded-full bg-gray-100 px-6 py-2.5 text-xs text-gray-800 placeholder:text-gray-400 placeholder:font-semibold font-agos-sub focus:outline-none focus:ring-2 ${
@@ -67,23 +68,49 @@ function ContactUs() {
         setShowConfirm(true);
     };
 
-    // step 2: user confirmed, actually send
-    const handleConfirmSend = async () => {
-        setShowConfirm(false);
-        setIsLoading(true);
-        try {
-            // supabase / API call here
+const handleConfirmSend = async () => {
+    console.log("YES, SEND CLICKED");
+
+    setShowConfirm(false);
+    setIsLoading(true);
+
+    try {
+        const { error } = await supabase
+            .from("contact_messages")
+            .insert({
+                name: form.name.trim(),
+                email: form.email.trim(),
+                phone_number: form.number.trim(),
+                location: form.location.trim(),
+                message: form.message.trim(),
+            });
+
+        if (error) throw error;
+
+        // Keep the rest of your existing success logic here.
             setToast({
                 type: "success",
                 message:
                     "Your message has been successfully sent. Thank you for contacting us! AGOS will get back to you as soon as possible.",
             });
-            setForm({ name: "", email: "", number: "", location: "", message: "" });
+
+            setForm({
+                name: "",
+                email: "",
+                number: "",
+                location: "",
+                message: "",
+            });
+
         } catch (err) {
+            console.error("Contact message submission failed:", err);
+
             setToast({
                 type: "error",
-                message: "Something went wrong. We apologize for the inconvenience. Please try again.",
+                message:
+                    "Unable to send your message. Please check your connection and try again.",
             });
+
         } finally {
             setIsLoading(false);
         }
@@ -164,8 +191,8 @@ function ContactUs() {
             </header>
 
             {/* Layout wrapper: form column on the left, image visual on the right (stacks on mobile) */}
-            <div className="grid grid-cols-1 items-center gap-6 md:grid-cols-2">
-                <section className="w-full md:w-full">
+            <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-2">
+                   <section className="flex w-full md:w-full gap-2 flex-col">
                     {/* Form card */}
                     <form
                         noValidate
@@ -266,7 +293,7 @@ function ContactUs() {
                             type="submit"
                             disabled={isLoading}
                             aria-busy={isLoading}
-                            className="self-center flex items-center justify-center bg-white text-primary text-xs font-bold rounded-full px-6 py-2 shadow-card hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-white/70 disabled:opacity-70 cursor-pointer"
+                            className="self-center flex items-center justify-center bg-white text-primary text-xs font-bold rounded-full px-6 py-2 shadow-card hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-white/70 disabled:opacity-70 cursor-pointer"
                         >
                             {isLoading ? "Sending..." : "Send Message"}
                             {isLoading && <LoaderCircle className="ml-2 animate-spin" size={14} />}
@@ -276,33 +303,35 @@ function ContactUs() {
                     {/* Contact info strip */}
                     <div className="bg-primary rounded-lg shadow-elevated px-4 py-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
                         <a
-                            href="mailto:support@agos.ph"
+                            href="https://mail.google.com/mail/?view=cm&fs=1&to=admin.agos@gmail.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="flex items-center gap-3 text-white text-xs font-bold hover:underline"
                         >
                             <span className="flex items-center justify-center w-10 h-10 rounded-full bg-primary-hover border-2 border-white/60">
                                 <Mail size={18} />
                             </span>
-                            support@agos.ph
+                            admin.agos@gmail.com
                         </a>
 
                         <a
-                            href="tel:+6328888246"
+                            href="tel:+639814415993"
                             className="flex items-center gap-3 text-white text-xs font-bold hover:underline"
                         >
                             <span className="flex items-center justify-center w-10 h-10 rounded-full bg-primary-hover border-2 border-white/60">
                                 <Phone size={18} />
                             </span>
-                            +63 2 8888 AGOS
+                            +639814415993
                         </a>
                     </div>
                 </section>
 
                 {/* Image visual (right side). Remove "hidden md:block" to also show it on mobile. */}
-                <div className="hidden md:flex md:w-[450px] items-center justify-center">
+                <div className="hidden md:block relative self-stretch">
                     <img
                         src={contactVisual}
                         alt="Contact AGOS"
-                        className="w-full object-contain"
+                        className="absolute inset-0 w-full h-full object-contain object-top"
                     />
                 </div>
             </div>

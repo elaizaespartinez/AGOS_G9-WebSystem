@@ -4,12 +4,15 @@ import Footer from "../components/Footer";
 import ChatbotButton from "../components/ChatbotButton";
 import ChatbotWindow from "../pages/ChatbotWindow";
 import { useState } from "react";
+import ScrollToTop from "../components/ScrollToTop";
 
 function MainLayout(){
 
     const [isChatbotOpen, setIsChatbotOpen] = useState(false);
     return (
         <>
+            <ScrollToTop />
+            
             <Navbar />
 
             <main>

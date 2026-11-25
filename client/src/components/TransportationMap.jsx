@@ -501,7 +501,7 @@ function TransportationMap({
     }, [floodReports]);
 
     return (
-        <div className="relative h-full min-h-0">
+        <div className="relative h-full min-h-0 shadow-elevated">
             <div ref={mapElement} className="transport-map" aria-label="Interactive Batangas transportation map" />
             <button type="button" onClick={locateUser} className="transport-location-button" disabled={locationStatus === "Finding your location..."}>
                 <LocateFixed size={15} /> {locationStatus === "Finding your location..." ? "Locating..." : "My location"}

@@ -1,10 +1,10 @@
-
 import logo from "../assets/agos_logo.png";
 import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { signUp } from "../services/authService";
 import { getAuthErrorMessage } from "../services/authError";
+import PrivacyConsentModal from "../components/PrivacyConsentModal";
 import {
     getProvinces,
     getCitiesByProvince,
@@ -49,6 +49,8 @@ const benefits = [
     "One-tap emergency hotlines",
 ];
 
+const PRIVACY_POLICY_VERSION = "1.0";
+
 function Register() {
     const [step, setStep] = useState(1);
 
@@ -81,6 +83,9 @@ function Register() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+
+    // Data privacy notice and consent
+    const [showConsent, setShowConsent] = useState(false);
 
     const passwordRequirements = {
         length: password.length >= 8,
@@ -306,7 +311,8 @@ function Register() {
         setStep(2);
     };
 
-    const handleRegister = async (e) => {
+    // Step 2 submit: validate, then ask for consent before creating the account
+    const handleRegister = (e) => {
         e.preventDefault();
 
         setError("");
@@ -329,6 +335,15 @@ function Register() {
             return;
         }
 
+        setShowConsent(true);
+    };
+
+    // Runs only after the user agrees in the privacy modal
+    const completeRegistration = async () => {
+        if (isLoading) return;
+
+        setError("");
+        setSuccess("");
         setIsLoading(true);
 
         try {
@@ -336,15 +351,14 @@ function Register() {
                 name,
                 email,
                 password,
-
-                // Always send international format: +639171234567
                 phoneNumber: formatInternationalPhone(phone),
-
                 provinceID,
                 cityID,
                 barangayId,
+                privacyConsentAt: new Date().toISOString(),
+                privacyPolicyVersion: PRIVACY_POLICY_VERSION,
             });
-
+            
             if (data.user?.identities?.length === 0) {
                 setError("An account with this email may already exist.");
                 return;
@@ -370,7 +384,13 @@ function Register() {
             );
         } finally {
             setIsLoading(false);
+            setShowConsent(false);
         }
+    };
+
+    const handleDeclineConsent = () => {
+        setShowConsent(false);
+        setError("You need to accept the privacy notice to create an account.");
     };
 
     const handleSubmit = (e) => {
@@ -913,6 +933,14 @@ function Register() {
                     </p>
                 </section>
             </div>
+
+            {showConsent && (
+                <PrivacyConsentModal
+                    isSubmitting={isLoading}
+                    onDecline={handleDeclineConsent}
+                    onAgree={completeRegistration}
+                />
+            )}
         </main>
     );
 }

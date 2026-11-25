@@ -2,7 +2,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) 22rem;
     gap: 1rem;
-    max-width: var(--container-agos);
+    max-width: 1600px;
     margin: 0 auto;
     height: calc(100dvh - 5rem);
     padding: 0.75rem;

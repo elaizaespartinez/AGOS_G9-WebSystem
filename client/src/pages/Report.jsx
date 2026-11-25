@@ -288,12 +288,6 @@ function Report() {
               <span>Sign in before submitting a community report.</span>
             </div>
           )}
-          {submitError && (
-            <div className="mb-5 flex gap-3 rounded-xl border border-risk-high/30 bg-risk-high/10 p-4 text-sm text-text/75" role="alert">
-              <AlertCircle size={18} className="mt-0.5 shrink-0 text-risk-high" />
-              {submitError}
-            </div>
-          )}
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
 
             {/* REPORT TYPE */}
@@ -391,7 +385,7 @@ function Report() {
                     </p>
                   </div>
                 )}
-                {locationError && <p className="text-xs leading-relaxed text-risk-high" role="alert">{locationError}</p>}
+                
               </div>
             </div>
 
@@ -548,6 +542,52 @@ function Report() {
           </div>
         </div>
       )}
+      {(submitError || locationError) && (
+      <div
+          className="fixed inset-0 z-50 grid place-items-center bg-secondary/50 p-4"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="report-error-title"
+      >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl sm:p-8">
+              <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-risk-high/10 text-risk-high">
+                  <AlertCircle size={32} />
+              </div>
+
+              <div className="mt-5 text-center">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-risk-high">
+                      Report not sent
+                  </p>
+
+                  <h2 id="report-error-title" className="mt-2 text-2xl font-extrabold text-secondary">
+                      Please review your report
+                  </h2>
+
+                  <p
+                      role="alert"
+                      className="mt-4 rounded-lg border border-risk-high/20 bg-risk-high/10 px-4 py-3 text-sm font-semibold leading-relaxed text-risk-high"
+                  >
+                      {submitError || locationError || "Something went wrong while sending your report."}
+                  </p>
+
+                  <p className="mt-3 text-xs leading-relaxed text-text/65">
+                      Fix the issue above and try again. Your details have not been lost.
+                  </p>
+              </div>
+
+              <button
+                  type="button"
+                  onClick={() => {
+                      setSubmitError("");
+                      setLocationError("");
+                  }}
+                  className="mt-6 w-full rounded-lg bg-secondary px-5 py-3 text-sm font-bold text-white transition hover:bg-secondary-hover"
+              >
+                  Close
+              </button>
+          </div>
+      </div>
+  )} 
     </main>
   );
 }

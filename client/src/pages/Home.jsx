@@ -1,18 +1,50 @@
 import { useEffect, useState } from "react";
 import {Link} from "react-router-dom";
 import ServiceCard from "../components/ServiceCard";
-import { Map, BusFront, PhoneIncoming, ContactRound, Cloud, MapPin, WavesHorizontal, OctagonAlert, PhoneCall, MoveRight, Droplets, Wind, CloudRain, Umbrella} from "lucide-react";
+import FloodMapLeaflet from "../components/FloodMapLeaflet";
+import { evacuationDestinations } from "../components/TransportationMap";
+import { Map, PhoneIncoming, ContactRound, MoveRight, NotepadText } from "lucide-react";
 import ContactUs from "./ContactUs";
 import MapImg from "../assets/visuals/map.png";
-import {
-    defaultHomeData,
-    getAlertIcon,
-    getFloodStatusIcon,
-} from "../data/homeData";
+import { defaultHomeData } from "../data/homeData";
 import { getHomeDashboard } from "../services/homeService";
 import { subscribeToPublicCommunications } from "../services/publicCommunicationsService";
+import {
+    listFloodReports,
+    subscribeToFloodReports,
+} from "../services/floodReportsService";
+import "../flood-map.css";
 
 let cachedHomeData = null;
+
+// Stable reference so the map doesn't reset itself on every render
+const noWeatherData = [];
+
+const floodPillStyles = {
+    safe: { pill: "bg-safe/15", dot: "bg-safe" },
+    low: { pill: "bg-risk-low/20", dot: "bg-risk-low" },
+    moderate: { pill: "bg-risk-moderate/15", dot: "bg-risk-moderate" },
+    high: { pill: "bg-risk-high/15", dot: "bg-risk-high" },
+    unknown: { pill: "bg-gray-100", dot: "bg-gray-400" },
+};
+
+function MiniStat({ label, value, note }) {
+    return (
+        <div className="flex h-full min-w-0 flex-col justify-center rounded-xl bg-card p-4 shadow-card">
+            <p className="text-xs font-bold uppercase tracking-wider text-text/60">
+                {label}
+            </p>
+
+            <p className="mt-1 truncate text-2xl font-extrabold text-text">
+                {value ?? "--"}
+            </p>
+
+            {note && (
+                <p className="mt-0.5 truncate text-xs text-text/60">{note}</p>
+            )}
+        </div>
+    );
+}
 
 function Home() {
     const [homeData, setHomeData] = useState(
@@ -20,6 +52,7 @@ function Home() {
     );
     const [isLoading, setIsLoading] = useState(!cachedHomeData);
     const [hasLoadError, setHasLoadError] = useState(false);
+    const [floodReports, setFloodReports] = useState([]);
 
     useEffect(() => {
         let isMounted = true;
@@ -79,61 +112,40 @@ function Home() {
         };
     }, []);
 
-    const { weather, floodStatus, activeAlert, hotlines } = homeData;
-    const floodStatusIcon = getFloodStatusIcon(floodStatus.risk);
-    const alertIcon = getAlertIcon(activeAlert.type, activeAlert.severity);
-    const alertStyles = {
-        high: {
-            card: "border-risk-high/30 bg-white/10",
-            icon: "bg-risk-high",
-            label: "text-red-800",
-            link: "bg-red-800 hover:bg-red-700 focus-visible:ring-risk-high",
-        },
-        moderate: {
-            card: "border-risk-moderate/30 bg-white/10",
-            icon: "bg-risk-moderate",
-            label: "text-risk-moderate",
-            link: "bg-risk-moderate hover:bg-orange-700 focus-visible:ring-risk-moderate",
-        },
-        low: {
-            card: "border-risk-low/40 bg-white/10",
-            icon: "bg-risk-low",
-            label: "text-yellow-800",
-            link: "bg-yellow-600 hover:bg-yellow-700 focus-visible:ring-yellow-600",
-        },
-        safe: {
-            card: "border-primary/30 bg-slate-50",
-            icon: "bg-primary",
-            label: "text-primary-hover",
-            link: "bg-primary hover:bg-primary-hover focus-visible:ring-primary",
-        },
-    };
-    const alertStyle =
-        alertStyles[String(activeAlert.severity).toLowerCase()] ??
-        alertStyles.unknown;
+    // Official flood reports for the map preview (same source as the full map)
+    useEffect(() => {
+        let isMounted = true;
 
-    const floodScale = [
-        { key: "safe", label: "Safe", bar: "bg-safe" },
-        { key: "low", label: "Low", bar: "bg-risk-low" },
-        { key: "moderate", label: "Moderate", bar: "bg-risk-moderate" },
-        { key: "high", label: "High", bar: "bg-risk-high" },
-    ];
-    const floodLevelIndex = floodScale.findIndex(
-        ({ key }) => key === String(floodStatus.risk).toLowerCase()
-    );
+        const refreshReports = async () => {
+            try {
+                const nextReports = await listFloodReports();
+                if (isMounted) setFloodReports(nextReports);
+            } catch (error) {
+                console.error("Unable to load active flood reports.", error);
+            }
+        };
 
-    const weatherStats = [
-        { icon: Droplets, label: "Humidity", value: weather.humidity },
-        { icon: Wind, label: "Wind", value: weather.wind },
-        { icon: CloudRain, label: "Rainfall", value: weather.rainfall },
-        { icon: Umbrella, label: "Chance of rain", value: weather.rainChance },
-    ];
+        refreshReports();
+        const unsubscribe = subscribeToFloodReports(refreshReports);
 
-    const toTel = (number) =>
-        `tel:${number.replace(/[^\d+]/g, "")}`;
+        return () => {
+            isMounted = false;
+            unsubscribe();
+        };
+    }, []);
+
+    const { weather, floodStatus } = homeData;
+
+    const floodPill =
+        floodPillStyles[String(floodStatus.risk).toLowerCase()] ??
+        floodPillStyles.unknown;
 
     return (
         <main className="flex flex-col gap-4 bg-background p-2 md:px-32">
+            <h1 className="sr-only">
+                AGOS flood information for Batangas City
+            </h1>
+
             {(isLoading || hasLoadError) && (
                 <p
                     role={hasLoadError ? "alert" : "status"}
@@ -145,235 +157,135 @@ function Home() {
                 </p>
             )}
 
-            <article
-                role="alert"
-                aria-label="Active alert"
-                className={`flex flex-col gap-4 bg-white rounded-2xl border p-4 text-text shadow-elevated md:flex-row md:items-center md:p-5 ${alertStyle.card}`}
-            >
-                <div className="flex min-w-0 flex-1 items-start gap-3">
-                    <div
-                        className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full text-white ${alertStyle.icon}`}
+            {/* Flood map preview */}
+            <section aria-labelledby="home-map-heading" className="flex flex-col gap-3">
+                <div className="relative isolate h-[24rem] overflow-hidden rounded-2xl bg-gray-100 shadow-card md:h-[28rem]">
+                    <FloodMapLeaflet
+                        preview
+                        weatherData={noWeatherData}
+                        facilityData={evacuationDestinations}
+                        floodReports={floodReports}
+                    />
+                    <div className="pointer-events-none absolute right-3 top-3 z-[600] rounded-lg bg-white/95 px-3 py-2 text-xs shadow-card backdrop-blur">
+                        <p className="font-bold text-secondary">Flood map preview</p>
+                        <p className="mt-0.5 text-[0.65rem] text-text/60">
+                            {floodReports.length
+                                ? `${floodReports.length} active official report${floodReports.length === 1 ? "" : "s"}`
+                                : "No active official reports"}
+                        </p>
+                    </div>
+                    <div className="pointer-events-none absolute bottom-20 left-3 z-[600] hidden items-center gap-3 rounded-lg bg-white/95 px-3 py-2 text-[0.65rem] font-semibold text-text shadow-card backdrop-blur sm:flex">
+                        <span className="flex items-center gap-1.5">
+                            <i className="h-2.5 w-2.5 rounded-full bg-[#dc2626]" />
+                            Flood reports
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <i className="h-2.5 w-2.5 rounded-full bg-[#2e9eac]" />
+                            Evacuation centers
+                        </span>
+                    </div>
+                    
+                    <Link
+                        to="/maps?tab=flood"
+                        className="absolute bottom-4 right-4 z-[600] inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-secondary px-5 text-sm font-bold text-white shadow-card transition-colors hover:bg-secondary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 sm:w-auto"
                     >
-                        {alertIcon ? (
-                            <img
-                                src={alertIcon}
-                                alt={`${activeAlert.severity} ${activeAlert.type} alert`}
-                                className="h-full w-full object-cover"
-                            />
-                        ) : (
-                            <OctagonAlert size={24} aria-hidden="true" />
-                        )}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                        <p
-                            className={`text-xs font-extrabold uppercase tracking-wider ${alertStyle.label}`}
-                        >
-                            {activeAlert.severity} alert
-                        </p>
-
-                        <h3 className="text-lg font-extrabold leading-snug">
-                            {activeAlert.title}
-                        </h3>
-
-                        <p className="text-sm leading-relaxed text-text/75">
-                            {activeAlert.description}
-                        </p>
-
-                        <p className="mt-2 text-xs text-text/60">
-                            Updated at {activeAlert.updatedAt} · Source:{" "}
-                            {activeAlert.source}
-                        </p>
-                    </div>
-                </div>
-
-                <Link
-                    to="/flood-map"
-                    className={`inline-flex min-h-12 w-full shrink-0 items-center justify-center rounded-lg px-6 text-center text-sm font-bold text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 md:w-auto ${alertStyle.link}`}
-                >
-                    View flood map
-
-                    <MoveRight size={16} className="ml-2" />
-                </Link>
-            </article>
-
-            <section
-                aria-label="Current weather"
-                className="grid grid-cols-1 gap-4 md:grid-cols-3"
-            >
-                <div className="flex flex-col justify-between gap-4 rounded-xl bg-primary p-4 text-white md:col-span-1 md:p-5">
-                    <div className="flex items-center gap-3">
-                        <Cloud size={48} className="shrink-0 text-white/70" aria-hidden="true" />
-
-                        <div>
-                            <h1 className="text-3xl font-bold md:text-4xl">
-                                {weather.temperature}
-                            </h1>
-
-                            <p className="text-sm">
-                                {weather.condition}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="rounded-xl bg-[#1BBED2]/40 p-3">
-                        <p className="flex items-center gap-1 text-sm font-semibold">
-                            <MapPin size={14} aria-hidden="true" />
-                            {weather.location}
-                        </p>
-
-                        <p className="mt-0.5 text-xs">
-                            {weather.date} · {weather.time}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 md:col-span-2 md:grid-cols-4">
-                    {weatherStats.map(({ icon: Icon, label, value }) => (
-                        <div
-                            key={label}
-                            className="flex flex-col items-center justify-center gap-1 rounded-xl bg-card p-4 text-center text-text shadow-elevated"
-                        >
-                            <Icon size={28} className="text-primary" aria-hidden="true" />
-
-                            <p className="text-lg font-extrabold">
-                                {value ?? "--"}
-                            </p>
-
-                            <p className="text-xs text-text/60">
-                                {label}
-                            </p>
-                        </div>
-                    ))}
+                        Open full flood map
+                        <MoveRight size={18} aria-hidden="true" />
+                    </Link> 
                 </div>
             </section>
 
-            <section aria-labelledby="dashboard-heading" className="flex flex-col gap-1 rounded-xl p-2">
-                <header className="w-fit">
-                    <h2 id="dashboard-heading" className="text-2xl font-extrabold text-text md:text-3xl">
-                        Dashboard
-                    </h2>
-                </header>
+            {/* Conditions strip */}
+            <section
+                aria-label="Conditions in your area"
+                className="rounded-2xl bg-card p-5 shadow-elevated md:px-8 md:py-6"
+            >
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-4">
+                    <div className="min-w-0">
+                        <dt className="mb-2 text-xs font-bold uppercase tracking-wider text-text/60">
+                            Flood status
+                        </dt>
 
-                <div className="grid grid-cols-1 items-start gap-4 py-3 md:grid-cols-2">
-                    <article className="flex flex-col gap-4 rounded-2xl bg-secondary p-4 h-full text-white shadow-elevated md:p-6">
-                        <header className="flex items-center justify-between gap-2">
-                            <h3 className="text-sm font-semibold md:text-base">
-                                Current Flood Status
-                            </h3>
-                            <WavesHorizontal size={32} aria-hidden="true" />
-                        </header>
+                        <dd>
+                            <span
+                                className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-bold text-text ${floodPill.pill}`}
+                            >
+                                <span
+                                    aria-hidden="true"
+                                    className={`h-2 w-2 rounded-full ${floodPill.dot}`}
+                                />
+                                {floodStatus.level ?? "No data"}
+                            </span>
 
-                        <div className="flex items-center gap-4">
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white">
-                                {floodStatusIcon && (
-                                    <img
-                                        src={floodStatusIcon}
-                                        alt={`${floodStatus.risk} flood status`}
-                                        className="h-full w-full object-contain"
-                                    />
+                            <p className="mt-2 text-xs leading-relaxed text-text/60">
+                                {floodStatus.location}
+                                {floodStatus.updatedAt && (
+                                    <>
+                                        <br />
+                                        Updated {floodStatus.updatedAt}
+                                    </>
                                 )}
-                            </div>
-
-                            <div>
-                                <p className="text-sm text-white/80">
-                                    {floodStatus.location}
-                                </p>
-                                <p className="text-xl font-extrabold md:text-2xl">
-                                    {floodStatus.level}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div>
-                            <div aria-hidden="true" className="grid grid-cols-4 gap-1.5">
-                                {floodScale.map(({ key, bar }, i) => (
-                                    <div
-                                        key={key}
-                                        className={`h-2 rounded ${i <= floodLevelIndex ? bar : "bg-white/25"}`}
-                                    />
-                                ))}
-                            </div>
-
-                            <div className="mt-1.5 grid grid-cols-4 text-xs text-white/80">
-                                {floodScale.map(({ key, label }, i) => (
-                                    <span
-                                        key={key}
-                                        className={i === floodLevelIndex ? "font-bold text-white" : ""}
-                                    >
-                                        {label}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-
-                        {floodStatus.updatedAt && (
-                            <div>
-                                <p className="text-xs text-white/70">
-                                    Updated {floodStatus.updatedAt}
-                                </p>
-                                <p className="text-xs text-white/70">{floodStatus.source ? `Source: ${floodStatus.source}` : ""}</p>
-                            </div>
-                        )}
-                    </article>
-
-                    {/* Hotlines */}
-                    <article className="flex flex-col gap-3 rounded-2xl bg-card p-4 text-text shadow-elevated md:p-6">
-                        <header className="flex items-center justify-between gap-2">
-                            <h3 className="text-sm font-bold text-primary md:text-lg">
-                                Quick Emergency Hotline
-                            </h3>
-                            <PhoneCall size={32} className="text-primary" aria-hidden="true" />
-                        </header>
-
-                        {/* <a
-                            href="tel:911"
-                            className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-red-800 text-lg font-extrabold text-white transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-text focus-visible:ring-offset-2"
-                        >
-                            <PhoneCall size={22} aria-hidden="true" />
-                            Call 911
-                        </a> */}
-
-                        {hotlines.length === 0 ? (
-                            <p className="text-sm text-text/60">
-                                Hotline information unavailable.
+                                {floodStatus.source && (
+                                    <>
+                                        <br />
+                                        Source: {floodStatus.source}
+                                    </>
+                                )}
                             </p>
-                        ) : (
-                            <ul className="flex flex-col gap-2">
-                                {hotlines.map(({ id, name, numbers }) => (
-                                    <li
-                                        key={id || name}
-                                        className="flex flex-col gap-1.5 rounded-xl bg-background/60 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
-                                    >
-                                        <span className="text-sm font-semibold sm:max-w-[55%]">
-                                            {name}
-                                        </span>
+                        </dd>
+                    </div>
 
-                                        <div className="flex flex-wrap gap-x-4 sm:justify-end">
-                                            {numbers.map((number) => (
-                                                <a
-                                                    key={number}
-                                                    href={toTel(number)}
-                                                    className="inline-flex min-h-11 items-center gap-1.5 rounded text-sm font-bold text-primary transition-colors hover:text-primary-hover hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                                                >
-                                                    <PhoneCall size={14} aria-hidden="true" />
-                                                    {number}
-                                                </a>
-                                            ))}
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
+                    <div className="min-w-0">
+                        <dt className="mb-2 text-xs font-bold uppercase tracking-wider text-text/60">
+                            Weather
+                        </dt>
 
-                        <Link
-                            to="/emergency"
-                            className="py-1 text-center text-sm font-bold text-primary hover:text-primary-hover hover:underline"
-                        >
-                            See all hotlines →
-                        </Link>
-                    </article>
-                </div>
+                        <dd>
+                            <p className="text-3xl font-extrabold text-text">
+                                {weather.temperature ?? "--"}
+                            </p>
+
+                            <p className="mt-1 text-sm text-text/60">
+                                {weather.condition}
+                                {weather.location && ` · ${weather.location}`}
+                            </p>
+                        </dd>
+                    </div>
+
+                    <div className="min-w-0">
+                        <dt className="mb-2 text-xs font-bold uppercase tracking-wider text-text/60">
+                            Rain
+                        </dt>
+
+                        <dd>
+                            <p className="text-3xl font-extrabold text-text">
+                                {weather.rainChance ?? "--"}
+                            </p>
+
+                            <p className="mt-1 text-sm text-text/60">
+                                Chance of rain
+                                {weather.rainfall && ` · ${weather.rainfall} now`}
+                            </p>
+                        </dd>
+                    </div>
+
+                    <div className="min-w-0">
+                        <dt className="mb-2 text-xs font-bold uppercase tracking-wider text-text/60">
+                            Wind and humidity
+                        </dt>
+
+                        <dd>
+                            <p className="text-3xl font-extrabold text-text">
+                                {weather.wind ?? "--"}
+                            </p>
+
+                            <p className="mt-1 text-sm text-text/60">
+                                Wind
+                                {weather.humidity && ` · ${weather.humidity} humidity`}
+                            </p>
+                        </dd>
+                    </div>
+                </dl>
             </section>
 
             <hr className="border-t border-text/20" />
@@ -388,16 +300,16 @@ function Home() {
                 <div className="grid grid-cols-1 gap-3 py-3 md:grid-cols-4">
                     <ServiceCard
                         icon={<Map size={32} />}
-                        title="Flood Map"
-                        description="View flood-prone areas and check the current flood risk around Batangas City."
-                        to="/flood-map"
+                        title="Maps"
+                        description="View flood-prone areas, check the current flood risk, and find safer routes around Batangas City."
+                        to="/maps?tab=flood"
                     />
 
                     <ServiceCard
-                        icon={<BusFront size={32} />}
-                        title="Transportation"
-                        description="Find PUJ routes and identify routes affected by flooding or other hazards."
-                        to="/transportation"
+                        icon={<NotepadText size={32} />}
+                        title="Report"
+                        description="Report flooded roads, blockages or heavy rain to help others in your area."
+                        to="/report"
                     />
 
                     <ServiceCard

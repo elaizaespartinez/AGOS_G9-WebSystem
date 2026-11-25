@@ -7,7 +7,7 @@ import {
     Megaphone,
     Phone,
     Settings,
-    X,
+    X, Mail
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import logo from "../../assets/agos_logo.png";
@@ -26,6 +26,7 @@ const sections = [
             { to: "/admin/reports", label: "Community Reports", icon: ClipboardList },
             { to: "/admin/communications", label: "Alerts & Announcements", icon: Megaphone },
             { to: "/admin/transportation", label: "Transportation", icon: BusFront },
+            { to: "/admin/contact-message", label: "Contact Message", icon: Mail },
         ],
     },
     {

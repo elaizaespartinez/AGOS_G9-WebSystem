@@ -7,13 +7,10 @@ import { useAuth } from "../contexts/AuthContext";
 
 const links = [
     ["Home", "/"],
-    ["Flood Map", "/flood-map"],
-    ["Transportation", "/transportation"],
+    ["Maps", "/maps"],
     ["Report", "/report"],
     ["Announcements", "/announcements"],
     ["Emergency", "/emergency"],
-
-    
 ];
 
 export default function Navbar() {
@@ -74,7 +71,7 @@ export default function Navbar() {
     return (
         <nav
             className="
-                sticky top-0 z-1000 flex h-18 md:h-20 min-h-[72px]  items-center
+                sticky top-0 z-[2000] flex h-18 md:h-20 min-h-[72px]  items-center
                 border-b border-gray-200 bg-white px-[5%]
                 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.1)]
                 max-md:flex-wrap max-md:py-3 mb-4"
@@ -187,7 +184,7 @@ export default function Navbar() {
                     </li>
                 )}
 
-                <li className="hidden md:block">
+                <li className=" md:hidden">
                     <a
                         href="tel:911"
                         className="

@@ -1,12 +1,11 @@
 import MainLayout from './layouts/MainLayout'
 import AuthLayout from './layouts/AuthLayout'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Home from './pages/Home'
-import FloodMap from './pages/FloodMap'
-import Transportation from './pages/Transportation'
 import Announcements from './pages/Announcements'
 import Emergency from './pages/Emergency'
 import Register from './pages/Register'
+import Maps from './pages/Maps'
 import Login from './pages/Login'
 import Profile from './pages/Profile'
 import CompleteProfile from './pages/CompleteProfile'
@@ -28,6 +27,11 @@ import NotAuthorized from './pages/admin/NotAuthorized'
 import AdminLogin from './pages/admin/AdminLogin'
 import Report from './pages/Report'
 import EditProfile from './pages/EditProfile'
+import AdminProfile from './pages/admin/AdminProfile'
+import AdminEditProfile from './pages/admin/AdminEditProfile'
+import AdminContactMessage from './pages/admin/AdminContactMessage'
+import AdminForgotPassword from './pages/admin/AdminForgotPassword'
+import AdminResetPassword from './pages/admin/AdminResetPassword'
 
 function App() {
   return (
@@ -36,8 +40,15 @@ function App() {
 
       <Route element={<MainLayout />}>
         <Route path="/" element={<Home />} />
-        <Route path="/flood-map" element={<FloodMap />} />
-        <Route path="/transportation" element={<Transportation />} />
+        <Route path="/maps" element={<Maps />} />
+        <Route
+            path="/flood-map"
+            element={<Navigate to="/maps?tab=flood" replace />}/>
+
+        <Route
+            path="/transportation"
+            element={<Navigate to="/maps?tab=transportation" replace />}
+        />
         <Route path="/emergency" element={<Emergency />} />
         <Route path="/announcements" element={<Announcements />} />
         <Route path="/profile" element={<Profile />} />
@@ -47,6 +58,9 @@ function App() {
 
       <Route path="/admin/not-authorized" element={<NotAuthorized />} />
       <Route path="/admin/login" element={<AdminLogin />} />
+      {/* Admin password recovery - accessible without login */}
+      <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
+      <Route path="/admin/reset-password" element={<AdminResetPassword />} />
       <Route element={<AdminRoute />}>
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<AdminHome />} />
@@ -58,6 +72,9 @@ function App() {
           <Route path="/admin/evacuation-centers" element={<AdminEvacuationCenters />} />
           <Route path="/admin/transportation" element={<AdminTransportation />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
+          <Route path="/admin/profile" element={<AdminProfile />} />
+          <Route path="/admin/edit-profile" element={<AdminEditProfile />} />
+          <Route path="/admin/contact-message" element={<AdminContactMessage />} />
         </Route>
       </Route>
 
